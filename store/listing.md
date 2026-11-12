@@ -7,7 +7,7 @@ made by `./build.mjs --zip`.
 ## Item
 
 - Item ID `egpapgddflnnnhokjchhinhokpgchmnf`, listing https://chromewebstore.google.com/detail/egpapgddflnnnhokjchhinhokpgchmnf
-- 1.3.6 submitted 2026-11-12, publishes automatically when approved. Updates: upload a new
+- 1.3.8 submitted 2026-11-12 (replaced 1.3.6 before review), publishes automatically when approved. Updates: upload a new
   `./build.mjs --zip` package on the item's Package tab, then Submit for review.
 - The Test instructions tab has no credentials (Chrome autofill put some there once; clear them).
 
@@ -17,6 +17,9 @@ made by `./build.mjs --zip`.
   icons). No remote code.
 
 ## Store listing tab
+
+Paste the description with each paragraph unwrapped onto one line (the block below is wrapped for
+reading here; the store keeps every line break).
 
 - **Name** (from the manifest): Pane Zoom for Gmail
 - **Summary** (from the manifest, 132 max): Zoom only the Gmail reading pane, remembered per sender and
@@ -57,6 +60,7 @@ Chrome's zoom blows up everything: the inbox list, the sidebars, the toolbars. P
   off the side.
 
 Privacy
+
 The extension never sends your email address, anyone else's address or any mail content anywhere.
 Sync stores one-way SHA-256 hashes of addresses, the zoom numbers and when you set them. No
 analytics, no ads. Because there is no login, someone who already knows your Gmail address could
