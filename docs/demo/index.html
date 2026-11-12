@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inbox - you@example.com - Mail</title>
+<meta name="description" content="Live demo of Pane Zoom for Gmail: the real extension code running on a fake mailbox.">
+<link rel="icon" href="../img/icon-128.png">
+<!--
+  Live demo of Pane Zoom for Gmail. A fake mail client laid out like Gmail's
+  "right of inbox" reading pane, using the selectors the extension relies on:
+  h2.hP (subject), .gD[email] (sender), .a3s (message body), and a scrolling
+  reading pane. ext/ holds copies of the real content.js / content.css,
+  refreshed by tools/media.mjs. All people, addresses and mail are made up.
+
+  Query parameters (used by tools/media.mjs):
+    ?media            hide the demo banner
+    ?open=<id>        open that conversation first (news, hub, sam, fees, shop, drive)
+    ?preset=<json>    start from these levels: {"def":1,"senders":{"addr":1.5}}
+    ?w=<px>           fixed list width
+-->
+<style>
+  :root {
+    --bg: #f6f8fc; --panel: #fff; --text: #1f1f1f; --muted: #5e5e5e; --line: #e8eaed;
+    --hover: #f2f6fc; --sel: #d3e3fd; --compose: #c2e7ff; --search: #e9eef6;
+    --font: "Google Sans", Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.4 var(--font); display: flex; flex-direction: column; overflow: hidden; }
+  button { font: inherit; }
+
+  /* demo banner */
+  #banner { flex: none; background: #4c1d95; color: #fff; font-size: 13px; padding: 7px 16px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  #banner b { font-weight: 600; }
+  #banner a { color: #e9d5ff; }
+  #banner kbd { font: 600 12px/1 var(--font); background: rgba(255,255,255,.15); border-radius: 4px; padding: 2px 5px; }
+  body.media #banner { display: none; }
+
+  /* top bar */
+  #top { flex: none; height: 64px; display: flex; align-items: center; gap: 8px; padding: 8px 16px 8px 12px; }
+  .icon-btn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: #444746; flex: none; }
+  .icon-btn svg { width: 22px; height: 22px; }
+  #brand { display: flex; align-items: center; gap: 8px; width: 180px; font-size: 22px; color: #444746; }
+  #brand svg { width: 34px; height: 34px; }
+  #search { flex: 1; max-width: 720px; height: 48px; border-radius: 24px; background: var(--search); display: flex; align-items: center; gap: 12px; padding: 0 16px; color: var(--muted); font-size: 16px; }
+  #search svg { width: 22px; height: 22px; }
+  #top .spacer { flex: 1; }
+  #me { width: 32px; height: 32px; border-radius: 50%; background: #0b57d0; color: #fff; display: grid; place-items: center; font-weight: 500; margin-left: 8px; }
+
+  /* main area */
+  #main { flex: 1; display: flex; min-height: 0; padding-right: 16px; padding-bottom: 16px; }
+  #nav { width: 232px; flex: none; padding: 8px 8px 0 8px; }
+  #compose { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 22px 0 16px; border-radius: 16px; background: var(--compose); color: #001d35; font-weight: 500; border: 0; margin: 0 0 16px 0; }
+  #compose svg { width: 22px; height: 22px; }
+  .nav-item { display: flex; align-items: center; gap: 16px; height: 32px; padding: 0 12px 0 18px; border-radius: 0 16px 16px 0; color: #202124; margin-left: -8px; }
+  .nav-item svg { width: 20px; height: 20px; color: #444746; }
+  .nav-item .n { margin-left: auto; font-size: 12px; font-weight: 600; }
+  .nav-item.on { background: var(--sel); font-weight: 700; }
+  .nav-h { margin: 16px 0 4px 10px; font-size: 16px; color: #202124; }
+  .lbl { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-left: 4px; }
+
+  #mail { flex: 1; display: flex; min-width: 0; background: var(--panel); border-radius: 16px; overflow: hidden; }
+  #list { width: var(--list-w, 360px); flex: none; border-right: 1px solid var(--line); overflow-y: auto; }
+  #list-tools { height: 48px; display: flex; align-items: center; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--line); color: #444746; font-size: 12px; }
+  #list-tools .count { margin-left: auto; }
+  .row { display: grid; grid-template-columns: 20px 1fr auto; gap: 2px 10px; padding: 10px 16px 10px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .row:hover { background: var(--hover); box-shadow: inset 1px 0 0 #dadce0, inset -1px 0 0 #dadce0, 0 1px 2px 0 rgba(60,64,67,.3); }
+  .row.open { background: #c2dbff; }
+  .row .star { grid-row: span 2; color: #c4c7c5; padding-top: 1px; }
+  .row .star svg { width: 18px; height: 18px; }
+  .row .from { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .when { font-size: 12px; color: var(--muted); }
+  .row .line { grid-column: 2 / 4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 13px; }
+  .row .line .subj { color: var(--text); }
+  .row.unread .from, .row.unread .when, .row.unread .subj { font-weight: 700; color: #1f1f1f; }
+
+  /* reading pane: the scrolling ancestor the extension anchors to */
+  #pane { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  #pane-tools { flex: none; height: 48px; display: flex; align-items: center; gap: 4px; padding: 0 8px; color: #444746; }
+  #pane-tools .icon-btn { width: 36px; height: 36px; }
+  #pane-tools .icon-btn svg { width: 20px; height: 20px; }
+  #pane-tools .spacer { flex: 1; }
+  #scroll { flex: 1; overflow-y: auto; padding: 44px 24px 40px 0; }
+  .conv { display: none; }
+  .conv.on { display: block; }
+  h2.hP { margin: 0 0 18px 72px; font-size: 22px; font-weight: 400; line-height: 1.35; color: #1f1f1f; }
+  h2.hP .tag { display: inline-block; vertical-align: middle; font-size: 12px; line-height: 18px; padding: 0 6px; margin-left: 8px; border-radius: 4px; background: #ddd; color: #444; }
+  .msg { display: grid; grid-template-columns: 72px minmax(0, 1fr); padding-bottom: 20px; }
+  .msg > div { min-width: 0; }
+  .msg + .msg { border-top: 1px solid var(--line); padding-top: 16px; }
+  .av { width: 40px; height: 40px; border-radius: 50%; margin: 0 16px 0 16px; display: grid; place-items: center; color: #fff; font-size: 18px; font-weight: 500; }
+  .hdr { display: flex; align-items: baseline; gap: 6px; min-height: 40px; flex-wrap: wrap; }
+  .hdr .gD { font-weight: 700; font-size: 14px; }
+  .hdr .addr { font-size: 12px; color: var(--muted); }
+  .hdr .date { margin-left: auto; font-size: 12px; color: var(--muted); }
+  .hdr .to { flex-basis: 100%; font-size: 12px; color: var(--muted); margin-top: -18px; }
+  .a3s { font: 14px/1.5 Arial, Helvetica, sans-serif; color: #222; overflow-x: auto; padding-top: 8px; min-width: 0; }
+  .actions { grid-column: 2; display: flex; gap: 10px; padding-top: 18px; }
+  .actions span { border: 1px solid #747775; border-radius: 18px; padding: 7px 18px 7px 14px; color: #444746; font-size: 14px; font-weight: 500; }
+
+  /* demo extras: keystroke badge, fake cursor (video only) */
+  #keys { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%) translateY(8px); opacity: 0; transition: opacity .18s, transform .18s; background: rgba(32, 16, 64, .88); color: #fff; padding: 10px 14px; border-radius: 12px; display: flex; gap: 6px; align-items: center; font: 600 20px/1 var(--font); z-index: 2147483600; pointer-events: none; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+  #keys.on { opacity: 1; transform: translateX(-50%); }
+  #keys kbd { font: inherit; min-width: 38px; height: 38px; padding: 0 8px; display: grid; place-items: center; border-radius: 8px; background: #fff; color: #4c1d95; box-shadow: inset 0 -3px 0 #d8b4fe; }
+  #keys .what { font-size: 15px; font-weight: 500; margin-left: 6px; opacity: .9; }
+  #cursor { position: fixed; left: 0; top: 0; width: 22px; height: 22px; z-index: 2147483647; pointer-events: none; display: none; }
+  body.video #cursor { display: block; }
+
+  @media (max-width: 900px) {
+    #nav, #brand span, #search { display: none; }
+    #list { width: 42%; }
+    #main { padding: 0 8px 8px; }
+  }
+  @media (max-width: 600px) {
+    #list { display: none; }
+  }
+</style>
+<script>
+  // Before content.js: presets, and a stand-in for the bits of the chrome.*
+  // API the extension uses. Sync "succeeds" by echoing the document back.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    if (q.has('media')) document.documentElement.classList.add('media-root');
+    if (q.has('preset')) {
+      for (const k of Object.keys(localStorage)) if (k.startsWith('gmailPaneZoom')) localStorage.removeItem(k);
+      localStorage.setItem('gmailPaneZoom.v2', q.get('preset'));
+    }
+    const c = window.chrome || (window.chrome = {});
+    try {
+      c.runtime = { getManifest: () => ({ version: window.GPZ_VERSION || 'demo', name: 'Pane Zoom for Gmail' }), sendMessage: async (m) => ({ doc: m && m.doc }) };
+      c.storage = { onChanged: { addListener() {} }, local: { get: async () => ({}), set: async () => {} } };
+    } catch { /* read-only chrome object: content.js copes */ }
+
+    // Keystroke badge for the shortcut, shown before the extension handles it.
+    const mac = /mac/i.test((navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '');
+    let hide = 0;
+    window.addEventListener('keydown', (e) => {
+      if (!e.shiftKey || e.altKey || !(e.metaKey || e.ctrlKey)) return;
+      const up = e.code === 'Equal' || e.key === '+' || e.key === '=';
+      const down = e.code === 'Minus' || e.key === '_' || e.key === '-';
+      if (!up && !down) return;
+      const keys = document.getElementById('keys');
+      if (!keys) return;
+      keys.replaceChildren();
+      for (const k of [mac ? '⌘' : 'Ctrl', '⇧', up ? '+' : '−']) {
+        const kb = document.createElement('kbd'); kb.textContent = k; keys.append(kb);
+      }
+      const w = document.createElement('span'); w.className = 'what'; w.textContent = up ? 'zoom in' : 'zoom out'; keys.append(w);
+      keys.classList.add('on');
+      clearTimeout(hide);
+      hide = setTimeout(() => keys.classList.remove('on'), 1100);
+    }, true);
+  })();
+</script>
+<script src="ext/version.js"></script>
+</head>
+<body>
+<div id="banner">
+  <a href="../">← Pane Zoom for Gmail</a>
+  <span><b>Live demo</b>: the real extension on a fake mailbox. Press <kbd>⌘⇧+</kbd> / <kbd>⌘⇧−</kbd> (Ctrl+Shift on Windows) or use the − % + buttons. Each sender keeps its own zoom.</span>
+</div>
+
+<header id="top">
+  <div class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></div>
+  <div id="brand"><svg viewBox="0 0 34 34" aria-hidden="true"><rect x="3" y="7" width="28" height="20" rx="3" fill="#a78bfa"/><path d="M4 9l13 10L30 9" fill="none" stroke="#fff" stroke-width="2.5"/></svg><span>Mail</span></div>
+  <div id="search"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>Search mail</div>
+  <div class="spacer"></div>
+  <div class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z"/></svg></div>
+  <div class="icon-btn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></div>
+  <div id="me" aria-hidden="true">Y</div>
+</header>
+
+<div id="main">
+  <nav id="nav" aria-label="Folders">
+    <button id="compose" type="button"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a.996.996 0 0 0 0-1.41l-2.34-2.34a.996.996 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>Compose</button>
+    <div class="nav-item on"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H4.99C3.88 3 3 3.9 3 5l.01 14c0 1.1.88 2 1.99 2h14c1.1 0 2-.9 2-2V5a2 2 0 0 0-2-2zm0 12h-4c0 1.66-1.35 3-3 3s-3-1.34-3-3H4.99V5H19v10z"/></svg>Inbox<span class="n">3</span></div>
+    <div class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg>Starred</div>
+    <div class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>Snoozed</div>
+    <div class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>Sent</div>
+    <div class="nav-item"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zM6 20V4h7v5h5v11H6z"/></svg>Drafts<span class="n">1</span></div>
+    <div class="nav-h">Labels</div>
+    <div class="nav-item"><span class="lbl" style="background:#a78bfa"></span>Newsletters</div>
+    <div class="nav-item"><span class="lbl" style="background:#34a853"></span>Projects</div>
+    <div class="nav-item"><span class="lbl" style="background:#fbbc04"></span>Receipts</div>
+  </nav>
+
+  <div id="mail">
+    <div id="list" role="list">
+      <div id="list-tools"><span>☐ ▾</span><span>⟳</span><span>⋮</span><span class="count">1–6 of 6</span></div>
+      <div class="row unread" data-open="news"><span class="star"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg></span><span class="from">The Weekly Byte</span><span class="when">9:41 AM</span><span class="line"><span class="subj">Issue #214: tiny fonts, big ideas</span> — Why your editor needs a dark…</span></div>
+      <div class="row unread" data-open="hub"><span class="star"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg></span><span class="from">CodeHub</span><span class="when">8:15 AM</span><span class="line"><span class="subj">[acme/widgets] Fix flaky parser timeout (PR #482)</span> — jordan-lee approved…</span></div>
+      <div class="row unread" data-open="sam"><span class="star"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg></span><span class="from">Sam Rivera</span><span class="when">Yesterday</span><span class="line"><span class="subj">Notes from Thursday's planning</span> — Thanks all, here's where we landed…</span></div>
+      <div class="row" data-open="fees"><span class="star"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg></span><span class="from">Alex Morgan</span><span class="when">Nov 10</span><span class="line"><span class="subj">RE: Fee proposal for the Q1 audit</span> — Dear Jamie, thank you for the brief…</span></div>
+      <div class="row" data-open="shop"><span class="star"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg></span><span class="from">Example Shop</span><span class="when">Nov 9</span><span class="line"><span class="subj">Your order #10482 has shipped</span> — Track your parcel…</span></div>
+      <div class="row" data-open="drive"><span class="star"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg></span><span class="from">Cloud Drive</span><span class="when">Nov 8</span><span class="line"><span class="subj">Your weekly storage report</span> — You're using 41% of 100 GB…</span></div>
+    </div>
+
+    <section id="pane" aria-label="Reading pane">
+      <div id="pane-tools" aria-hidden="true">
+        <div class="icon-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4v2h16V4zm1 10v-2l-1-5H4l-1 5v2h1v6h10v-6h4v6h2v-6h1zm-9 4H6v-4h6v4z"/></svg></div>
+        <div class="icon-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></div>
+        <div class="icon-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"/></svg></div>
+        <div class="spacer"></div>
+        <div class="icon-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg></div>
+        <div class="icon-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 19H5V5h7V3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg></div>
+      </div>
+      <div id="scroll">
+
+        <!-- 1. Newsletter: small fonts, fixed 600px layout -->
+        <article class="conv" id="c-news">
+          <h2 class="hP">Issue #214: tiny fonts, big ideas <span class="tag">Newsletters</span></h2>
+          <div class="msg">
+            <div class="av" style="background:#7c3aed">W</div>
+            <div>
+              <div class="hdr"><span class="gD" email="digest@weeklybyte.example.org">The Weekly Byte</span><span class="addr">&lt;digest@weeklybyte.example.org&gt;</span><span class="date">9:41 AM</span><span class="to">to me</span></div>
+              <div class="a3s">
+                <table width="560" cellpadding="0" cellspacing="0" style="width:560px;border-collapse:collapse;font-family:Georgia,serif;background:#fffdf8;border:1px solid #eee">
+                  <tr><td style="background:linear-gradient(120deg,#0f766e,#4c1d95);padding:22px 26px;color:#fff">
+                    <div style="font:700 11px/1 Arial,sans-serif;letter-spacing:2px;opacity:.85">THE WEEKLY BYTE · ISSUE 214</div>
+                    <div style="font:700 24px/1.2 Georgia,serif;margin-top:8px">Tiny fonts, big ideas</div>
+                  </td></tr>
+                  <tr><td style="padding:18px 26px 4px;font-size:12px;line-height:1.55;color:#333">
+                    <p style="margin:0 0 12px">Good morning! This week: why dark editors win, a field guide to keyboard shortcuts, and the case for reading email at a comfortable size.</p>
+                    <p style="margin:0 0 4px;font:700 14px/1.3 Georgia,serif;color:#0f766e">1. Your editor wants a darker theme</p>
+                    <p style="margin:0 0 12px">A small study of 400 developers found fewer squints and longer focus sessions with high-contrast dark themes. The surprising part: font size mattered more than colour. <a href="#" style="color:#4c1d95">Read more →</a></p>
+                    <p style="margin:0 0 4px;font:700 14px/1.3 Georgia,serif;color:#0f766e">2. The shortcuts nobody teaches you</p>
+                    <p style="margin:0 0 12px">Twelve keyboard shortcuts that save you a minute a day each, from jumping between tabs to zooming just the part of the page you care about. <a href="#" style="color:#4c1d95">Read more →</a></p>
+                    <p style="margin:0 0 4px;font:700 14px/1.3 Georgia,serif;color:#0f766e">3. Reading at a comfortable size</p>
+                    <p style="margin:0 0 12px">Newsletters love 12px text. Your eyes don't. Bump it up for the senders you read closely and leave the rest alone. <a href="#" style="color:#4c1d95">Read more →</a></p>
+                  </td></tr>
+                  <tr><td style="padding:12px 26px 18px;font:10px/1.5 Arial,sans-serif;color:#888;border-top:1px solid #eee">You're receiving this because you subscribed at weeklybyte.example.org. <a href="#" style="color:#888">Unsubscribe</a> · <a href="#" style="color:#888">View in browser</a></td></tr>
+                </table>
+              </div>
+            </div>
+            <div class="actions"><span>↩ Reply</span><span>↪ Forward</span></div>
+          </div>
+        </article>
+
+        <!-- 2. Notifications: small text and code -->
+        <article class="conv" id="c-hub">
+          <h2 class="hP">[acme/widgets] Fix flaky parser timeout (PR #482) <span class="tag">Projects</span></h2>
+          <div class="msg">
+            <div class="av" style="background:#24292f">C</div>
+            <div>
+              <div class="hdr"><span class="gD" email="notifications@codehub.example.com">CodeHub</span><span class="addr">&lt;notifications@codehub.example.com&gt;</span><span class="date">8:15 AM</span><span class="to">to acme/widgets, Mention</span></div>
+              <div class="a3s" style="font-size:13px">
+                <p style="margin:0 0 10px"><b>@jordan-lee</b> approved this pull request.</p>
+                <p style="margin:0 0 10px">Looks good. The retry with a bounded timeout is much better than the sleep. One nit below, otherwise ready to merge.</p>
+                <p style="margin:0 0 6px;color:#57606a;font-size:12px">In <span style="font-family:Menlo,monospace">src/parser/stream.ts</span>:</p>
+                <pre style="margin:0 0 10px;padding:8px 10px;background:#f6f8fa;border:1px solid #d0d7de;border-radius:6px;font:12px/1.45 Menlo,Consolas,monospace;color:#24292f">-  await sleep(500);
++  await waitFor(() =&gt; parser.idle, { timeout: 2_000 });</pre>
+                <p style="margin:0 0 14px">Could we name the constant <span style="font-family:Menlo,monospace;background:#eff1f3;padding:1px 4px;border-radius:4px">PARSER_IDLE_TIMEOUT_MS</span>?</p>
+                <p style="margin:0;color:#57606a;font-size:11px">—<br>Reply to this email directly, view it on CodeHub, or unsubscribe.<br>You are receiving this because you were mentioned.</p>
+              </div>
+            </div>
+            <div class="actions"><span>↩ Reply</span><span>↪ Forward</span></div>
+          </div>
+        </article>
+
+        <!-- 3. Colleague: plain message -->
+        <article class="conv" id="c-sam">
+          <h2 class="hP">Notes from Thursday's planning</h2>
+          <div class="msg">
+            <div class="av" style="background:#0b8043">S</div>
+            <div>
+              <div class="hdr"><span class="gD" email="sam.rivera@northwind.example.com">Sam Rivera</span><span class="addr">&lt;sam.rivera@northwind.example.com&gt;</span><span class="date">Yesterday, 5:02 PM</span><span class="to">to me, Jordan, Priya</span></div>
+              <div class="a3s">
+                <div>Hi all,</div><br>
+                <div>Thanks for a productive session. Here's where we landed:</div>
+                <ul>
+                  <li>Ship the onboarding redesign behind a flag on the 18th.</li>
+                  <li>Jordan owns the migration script; Priya reviews.</li>
+                  <li>We'll revisit pricing copy after the user interviews.</li>
+                </ul>
+                <div>I've put the slides in the shared folder. Shout if I missed anything.</div><br>
+                <div>Cheers,<br>Sam</div>
+              </div>
+            </div>
+            <div class="actions"><span>↩ Reply</span><span>↩ Reply all</span><span>↪ Forward</span></div>
+          </div>
+        </article>
+
+        <!-- 4. Outlook-style: fixed 702px table in pt, no-wrap cells -->
+        <article class="conv" id="c-fees">
+          <h2 class="hP">RE: Fee proposal for the Q1 audit <span class="tag">External</span></h2>
+          <div class="msg">
+            <div class="av" style="background:#c5221f">A</div>
+            <div>
+              <div class="hdr"><span class="gD" email="alex.morgan@fabrikam.example.com">Alex Morgan</span><span class="addr">&lt;alex.morgan@fabrikam.example.com&gt;</span><span class="date">Nov 10, 7:46 PM</span><span class="to">to me, Jordan</span></div>
+              <div class="a3s" style="font:15px/1.5 'Times New Roman',Times,serif">
+                <p class="MsoNormal" style="margin:0 0 12px">Dear Jamie,</p>
+                <p class="MsoNormal" style="margin:0 0 12px">Thank you for sending the brief. We would be pleased to assist with the audit. Our fees for this engagement are charged on an hourly basis, as set out below.</p>
+                <table border="0" cellspacing="0" cellpadding="0"><tr><td>
+                  <table border="1" cellspacing="0" cellpadding="0" width="702" style="width:526.85pt;border-collapse:collapse;border:none">
+                    <tr><td width="389" style="width:291.5pt;border:solid windowtext 1pt;padding:2pt 6pt"><p class="MsoNormal" align="center" style="text-align:center;white-space:nowrap"><b>Role</b></p></td>
+                        <td nowrap width="313" style="border:solid windowtext 1pt;border-left:none;padding:2pt 6pt"><p class="MsoNormal" align="center" style="text-align:center"><b>Hourly rate (USD)</b></p></td></tr>
+                    <tr><td width="389" style="width:291.5pt;border:solid windowtext 1pt;border-top:none;padding:2pt 6pt"><p class="MsoNormal" style="white-space:nowrap">Engagement Partner, Managing Partner</p></td>
+                        <td nowrap width="313" style="border-bottom:solid windowtext 1pt;border-right:solid windowtext 1pt;padding:2pt 6pt"><p class="MsoNormal">850 reduced to 760</p></td></tr>
+                    <tr><td width="389" style="width:291.5pt;border:solid windowtext 1pt;border-top:none;padding:2pt 6pt"><p class="MsoNormal" style="white-space:nowrap">Senior Manager</p></td>
+                        <td nowrap width="313" style="border-bottom:solid windowtext 1pt;border-right:solid windowtext 1pt;padding:2pt 6pt"><p class="MsoNormal">540 reduced to 480</p></td></tr>
+                    <tr><td width="389" style="width:291.5pt;border:solid windowtext 1pt;border-top:none;padding:2pt 6pt"><p class="MsoNormal" style="white-space:nowrap">Associate</p></td>
+                        <td nowrap width="313" style="border-bottom:solid windowtext 1pt;border-right:solid windowtext 1pt;padding:2pt 6pt"><p class="MsoNormal">320 reduced to 290</p></td></tr>
+                  </table>
+                </td></tr></table>
+                <p class="MsoNormal" style="margin:12px 0">An advance payment of USD 5,000 will be required on signing the engagement letter. We look forward to working with you.</p>
+                <p class="MsoNormal" style="margin:0">Kind regards,<br>Alex Morgan<br><span style="color:#666;font-size:12px">Fabrikam Advisory · fabrikam.example.com</span></p>
+              </div>
+            </div>
+            <div class="actions"><span>↩ Reply</span><span>↩ Reply all</span><span>↪ Forward</span></div>
+          </div>
+        </article>
+
+        <!-- 5. Receipt: fixed 600px -->
+        <article class="conv" id="c-shop">
+          <h2 class="hP">Your order #10482 has shipped <span class="tag">Receipts</span></h2>
+          <div class="msg">
+            <div class="av" style="background:#e37400">E</div>
+            <div>
+              <div class="hdr"><span class="gD" email="receipts@shop.example.net">Example Shop</span><span class="addr">&lt;receipts@shop.example.net&gt;</span><span class="date">Nov 9</span><span class="to">to me</span></div>
+              <div class="a3s">
+                <table width="560" cellpadding="0" cellspacing="0" style="width:560px;font:12px/1.5 Helvetica,Arial,sans-serif;color:#333;border:1px solid #e5e5e5">
+                  <tr><td colspan="2" style="padding:16px 20px;background:#fff7ed;font:700 18px/1.2 Helvetica,Arial,sans-serif;color:#9a3412">Good news: it's on its way</td></tr>
+                  <tr><td style="padding:12px 20px">Mechanical keyboard, 75% layout × 1</td><td align="right" style="padding:12px 20px">$129.00</td></tr>
+                  <tr><td style="padding:0 20px 12px">USB-C cable, 2 m × 2</td><td align="right" style="padding:0 20px 12px">$18.00</td></tr>
+                  <tr><td style="padding:12px 20px;border-top:1px solid #eee"><b>Total</b></td><td align="right" style="padding:12px 20px;border-top:1px solid #eee"><b>$147.00</b></td></tr>
+                  <tr><td colspan="2" style="padding:12px 20px;font-size:10px;color:#999;border-top:1px solid #eee">Order #10482 · Shipped Nov 9 · Tracking EX123456789 · Questions? Reply to this email.</td></tr>
+                </table>
+              </div>
+            </div>
+            <div class="actions"><span>↩ Reply</span><span>↪ Forward</span></div>
+          </div>
+        </article>
+
+        <!-- 6. Service notice -->
+        <article class="conv" id="c-drive">
+          <h2 class="hP">Your weekly storage report</h2>
+          <div class="msg">
+            <div class="av" style="background:#1a73e8">D</div>
+            <div>
+              <div class="hdr"><span class="gD" email="noreply@drive.example.net">Cloud Drive</span><span class="addr">&lt;noreply@drive.example.net&gt;</span><span class="date">Nov 8</span><span class="to">to me</span></div>
+              <div class="a3s" style="font-size:12px;color:#444">
+                <p style="margin:0 0 10px">You're using <b>41 GB</b> of your 100 GB plan.</p>
+                <div style="height:8px;width:300px;max-width:100%;background:#e8eaed;border-radius:4px"><div style="height:8px;width:41%;background:#1a73e8;border-radius:4px"></div></div>
+                <p style="margin:12px 0 0">Largest folders: Photos (22 GB), Projects (9 GB), Backups (6 GB).</p>
+              </div>
+            </div>
+            <div class="actions"><span>↩ Reply</span><span>↪ Forward</span></div>
+          </div>
+        </article>
+
+      </div>
+    </section>
+  </div>
+</div>
+
+<div id="keys" aria-hidden="true"></div>
+<svg id="cursor" viewBox="0 0 22 22" aria-hidden="true"><path d="M3 2l14 9.5-6.2 1.1 3.6 6.9-2.6 1.3-3.6-6.9L3 18z" fill="#111" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/></svg>
+
+<script>
+  // Demo wiring: open conversations from the list.
+  (() => {
+    const q = new URLSearchParams(location.search);
+    if (q.has('media')) document.body.classList.add('media');
+    if (q.has('video')) document.body.classList.add('video');
+    if (q.get('w')) document.documentElement.style.setProperty('--list-w', `${parseInt(q.get('w'), 10)}px`);
+    const rows = [...document.querySelectorAll('.row')];
+    function open(id) {
+      for (const c of document.querySelectorAll('.conv')) c.classList.toggle('on', c.id === `c-${id}`);
+      for (const r of rows) {
+        const on = r.dataset.open === id;
+        r.classList.toggle('open', on);
+        if (on) r.classList.remove('unread');
+      }
+      document.getElementById('scroll').scrollTop = 0;
+    }
+    for (const r of rows) r.addEventListener('click', () => open(r.dataset.open));
+    open(q.get('open') || 'news');
+    window.demo = {
+      open,
+      cursor(x, y) { const c = document.getElementById('cursor'); c.style.transform = `translate(${x}px, ${y}px)`; },
+    };
+  })();
+</script>
+<link rel="stylesheet" href="ext/content.css">
+<script src="ext/content.js"></script>
+</body>
+</html>

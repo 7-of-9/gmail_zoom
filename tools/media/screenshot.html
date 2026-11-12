@@ -1,0 +1,79 @@
+<!doctype html>
+<!-- Store screenshot template, 1280x800. Config in the URL hash (JSON):
+     {title, sub, layout: "single"|"pair"|"devices", panels: [{src, crop?: [x,y,w,h], label?}]}
+     src images are 1280x800 CSS-px captures (any device scale). Used by tools/media.mjs. -->
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 800px; overflow: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; color: #2e1065;
+    background: radial-gradient(1200px 500px at 15% -10%, #f3e8ff 0%, transparent 60%), linear-gradient(160deg, #faf5ff 0%, #ede9fe 55%, #ddd6fe 100%); }
+  header { height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding-top: 6px; }
+  h1 { margin: 0; font-size: 42px; letter-spacing: -0.5px; font-weight: 750; }
+  p.sub { margin: 10px 0 0; font-size: 21px; color: #5b21b6; font-weight: 450; }
+  .brand { position: absolute; left: 28px; top: 24px; display: flex; gap: 10px; align-items: center; font-weight: 650; font-size: 15px; color: #4c1d95; opacity: .85; }
+  .brand img { width: 28px; height: 28px; }
+  .shot { position: absolute; left: 80px; top: 158px; width: 1120px; height: 642px; border-radius: 16px 16px 0 0; overflow: hidden;
+    box-shadow: 0 20px 60px rgba(76, 29, 149, .28), 0 0 0 1px rgba(76, 29, 149, .14); background-size: 1120px 700px; background-position: 0 0; }
+  .pair { position: absolute; left: 0; right: 0; top: 160px; display: flex; justify-content: center; gap: 36px; }
+  .panel { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .crop { border-radius: 14px; overflow: hidden; box-shadow: 0 16px 48px rgba(76, 29, 149, .25), 0 0 0 1px rgba(76, 29, 149, .14); background-repeat: no-repeat; background-color: #fff; }
+  .label { font-size: 17px; font-weight: 600; color: #4c1d95; background: rgba(255,255,255,.75); padding: 6px 14px; border-radius: 999px; box-shadow: 0 0 0 1px rgba(76,29,149,.15); }
+  .label b { color: #6b21a8; }
+  .devices { position: absolute; left: 0; right: 0; top: 150px; bottom: 0; display: flex; justify-content: center; align-items: center; gap: 20px; }
+  .dev { display: flex; flex-direction: column; align-items: center; }
+  .laptop .screen { width: 496px; height: 310px; border: 14px solid #1f1b2e; border-bottom-width: 16px; border-radius: 16px 16px 0 0; background-size: cover; }
+  .laptop .base { width: 570px; height: 18px; background: linear-gradient(#d4d4d8, #a1a1aa); border-radius: 0 0 14px 14px; position: relative; }
+  .laptop .base::after { content: ""; position: absolute; left: 50%; top: 0; width: 110px; height: 7px; margin-left: -55px; background: #8b8b93; border-radius: 0 0 8px 8px; }
+  .desktop .screen { width: 456px; height: 285px; border: 12px solid #1f1b2e; border-radius: 12px; background-size: cover; }
+  .desktop .neck { width: 70px; height: 56px; background: linear-gradient(90deg, #a1a1aa, #d4d4d8, #a1a1aa); }
+  .desktop .foot { width: 200px; height: 12px; background: linear-gradient(#d4d4d8, #a1a1aa); border-radius: 8px 8px 4px 4px; }
+  .dev .label { margin-top: 16px; }
+  .sync { white-space: nowrap; margin-bottom: 40px; display: flex; flex-direction: column; align-items: center; gap: 10px; color: #6b21a8; font-weight: 650; font-size: 15px; }
+  .sync .circle { width: 74px; height: 74px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 10px 30px rgba(76,29,149,.25), 0 0 0 1px rgba(76,29,149,.15); }
+  .sync svg { width: 40px; height: 40px; }
+</style>
+<div class="brand"><img src="../../icons/icon.svg" alt="">Pane Zoom for Gmail</div>
+<header><h1 id="title"></h1><p class="sub" id="sub"></p></header>
+<main id="main"></main>
+<script>
+  const cfg = JSON.parse(decodeURIComponent(location.hash.slice(1)));
+  document.getElementById('title').textContent = cfg.title;
+  document.getElementById('sub').textContent = cfg.sub || '';
+  const main = document.getElementById('main');
+  const el = (tag, cls, parent) => { const e = document.createElement(tag); if (cls) e.className = cls; (parent || main).append(e); return e; };
+  const label = (parent, html) => { const l = el('div', 'label', parent); l.innerHTML = html; };
+  if (cfg.layout === 'single') {
+    const s = el('div', 'shot');
+    s.style.backgroundImage = `url("${cfg.panels[0].src}")`;
+  } else if (cfg.layout === 'pair') {
+    const wrap = el('div', 'pair');
+    for (const p of cfg.panels) {
+      const box = el('div', 'panel', wrap);
+      const [x, y, w, h] = p.crop;
+      const scale = p.scale || 1;
+      const c = el('div', 'crop', box);
+      c.style.width = `${w * scale}px`; c.style.height = `${h * scale}px`;
+      c.style.backgroundImage = `url("${p.src}")`;
+      c.style.backgroundSize = `${1280 * scale}px ${800 * scale}px`;
+      c.style.backgroundPosition = `${-x * scale}px ${-y * scale}px`;
+      if (p.label) label(box, p.label);
+    }
+  } else if (cfg.layout === 'devices') {
+    const wrap = el('div', 'devices');
+    const [a, b] = cfg.panels;
+    const lap = el('div', 'dev laptop', wrap);
+    el('div', 'screen', lap).style.backgroundImage = `url("${a.src}")`;
+    el('div', 'base', lap);
+    label(lap, a.label);
+    const sync = el('div', 'sync', wrap);
+    el('div', 'circle', sync).innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="#6b21a8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8a8 8 0 0 0-14.5-2.5L4 7"/><path d="M4 3v4h4"/><path d="M4 16a8 8 0 0 0 14.5 2.5L20 17"/><path d="M20 21v-4h-4"/></svg>';
+    el('div', '', sync).textContent = cfg.syncText || 'synced';
+    const desk = el('div', 'dev desktop', wrap);
+    el('div', 'screen', desk).style.backgroundImage = `url("${b.src}")`;
+    el('div', 'neck', desk);
+    el('div', 'foot', desk);
+    label(desk, b.label);
+  }
+  document.title = 'ready';
+</script>

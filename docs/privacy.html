@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy · Pane Zoom for Gmail</title>
+<meta name="description" content="What Pane Zoom for Gmail processes, what it sends to its sync server, and how to turn sync off or delete your data.">
+<link rel="icon" type="image/svg+xml" href="img/icon.svg">
+<style>
+  :root { --bg: #fbf9ff; --text: #1e1530; --muted: #5d5470; --line: #e6ddf7; --accent: #6b21a8; --chip: #efe5ff; color-scheme: light dark; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #120d1c; --text: #eee8f8; --muted: #b3a8c9; --line: #33284a; --accent: #c4a1ff; --chip: #2a1f40; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 32px 16px 56px; }
+  .top { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; text-decoration: none; color: var(--text); font-weight: 650; }
+  .top img { width: 36px; height: 36px; }
+  h1 { font-size: clamp(28px, 5vw, 38px); line-height: 1.15; margin: 0 0 6px; letter-spacing: -0.02em; }
+  h2 { font-size: 21px; margin: 34px 0 10px; }
+  p, ul { margin: 0 0 14px; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code { font: 0.88em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--chip); border-radius: 5px; padding: 1px 5px; word-break: break-word; }
+  .muted { color: var(--muted); }
+  footer { border-top: 1px solid var(--line); margin-top: 40px; padding-top: 18px; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="top" href="./"><img src="img/icon.svg" alt="">Pane Zoom for Gmail</a>
+  <h1>Privacy Policy</h1>
+  <p class="muted">Effective 12 November 2026</p>
+
+  <p>Pane Zoom for Gmail is a Chrome extension that zooms the email you're reading in Gmail, remembers the level per sender, and syncs those levels across your machines without a login. This page explains exactly what it handles.</p>
+
+  <h2>What the extension reads, in your browser</h2>
+  <ul>
+    <li><b>The sender's address</b> from the header of the message you have open, to pick that sender's zoom level.</li>
+    <li><b>Your Gmail address</b> from the Gmail tab title, so each Gmail account keeps its own settings and can sync them.</li>
+  </ul>
+  <p>It runs only on <code>https://mail.google.com/</code>. It doesn't read, store or send the content of your messages, your contacts, or anything else in your mailbox.</p>
+
+  <h2>What it stores on your device</h2>
+  <ul>
+    <li>Your zoom levels, in Gmail's site storage in your browser, keyed by the hashes described below.</li>
+    <li>Whether sync is switched on, in the extension's own storage.</li>
+  </ul>
+
+  <h2>What it sends, and where</h2>
+  <p>When sync is on, the extension sends this to its sync server at <code>https://panezoom-sync.azurewebsites.net</code>, hosted on Microsoft Azure (Southeast Asia):</p>
+  <ul>
+    <li>An <b>account key</b>: a one-way SHA-256 hash of your Gmail address.</li>
+    <li>For each sender you've set a level for, a <b>sender key</b>: a one-way SHA-256 hash of your Gmail address together with the sender's address.</li>
+    <li>The <b>zoom levels</b> (numbers such as 1.5), and the <b>time</b> each one was set or deleted.</li>
+  </ul>
+  <p>No email addresses, names, message content or browsing data are sent. The server stores one small record per account key. There are no analytics, no tracking and no ads. As with any web request, Microsoft's infrastructure sees your IP address to deliver it; the sync service doesn't record or use it.</p>
+
+  <h2>The limitation of having no login</h2>
+  <p>Sync works without an account because your Gmail address is the identity. The trade-off: someone who already knows your Gmail address could compute your account key, and could then check whether you've set a zoom level for a sender they guess, or change your levels. They can't list who emails you, and they can't read any mail. If that matters to you, switch sync off (below).</p>
+
+  <h2>Your controls</h2>
+  <p>Right-click the extension's toolbar icon:</p>
+  <ul>
+    <li><b>Sync zoom levels across machines</b> (a checkbox): untick it to stop syncing. Your levels then stay in this browser only.</li>
+    <li><b>Delete synced zoom levels (all machines)</b>: erases the per-sender levels and the default level for every Gmail account this browser has used. They're erased on the server immediately, and on each of your other machines at its next sync: the deletion carries a timestamp, and anything set before it is dropped everywhere. Sync stays on for changes you make afterwards; use the checkbox above to turn it off.</li>
+  </ul>
+
+  <h2>How long data is kept</h2>
+  <p>Synced levels are kept until you delete them. After a deletion, only an empty record named by the account hash remains. Records that haven't been touched for a year are removed automatically.</p>
+
+  <h2>Sharing</h2>
+  <p>The data isn't sold, shared with or transferred to anyone, and isn't used for anything other than syncing your zoom levels. Pane Zoom for Gmail's use of information complies with the <a href="https://developer.chrome.com/docs/webstore/program-policies/limited-use">Chrome Web Store User Data Policy, including the Limited Use requirements</a>.</p>
+
+  <h2>Open source</h2>
+  <p>All code, including the sync server, is public at <a href="https://github.com/7-of-9/gmail_zoom">github.com/7-of-9/gmail_zoom</a>, so you can check every claim on this page.</p>
+
+  <h2>Changes and contact</h2>
+  <p>Changes to this policy are published on this page and in the repository's history. Questions or requests: <a href="https://github.com/7-of-9/gmail_zoom/issues">open an issue on GitHub</a>.</p>
+
+  <footer>Not affiliated with or endorsed by Google. Gmail is a trademark of Google LLC. · <a href="./">Home</a></footer>
+</div>
+</body>
+</html>

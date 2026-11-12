@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pane Zoom for Gmail</title>
+<meta name="description" content="A Chrome extension that zooms only the email you're reading in Gmail, remembers the level per sender, and syncs it across your machines without a login.">
+<meta property="og:title" content="Pane Zoom for Gmail">
+<meta property="og:description" content="Zoom the email, not the whole of Gmail. Per-sender zoom, keyboard shortcuts, synced across your machines with no login.">
+<meta property="og:image" content="https://7-of-9.github.io/gmail_zoom/img/screenshot-1.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="img/icon.svg">
+<link rel="icon" type="image/png" href="img/icon-128.png">
+<style>
+  :root {
+    --bg: #fbf9ff; --bg2: #f3edff; --card: #ffffff; --text: #1e1530; --muted: #5d5470; --line: #e6ddf7;
+    --accent: #6b21a8; --accent-2: #4c1d95; --mauve: #d8b4fe; --chip: #efe5ff; --shadow: 0 10px 30px rgba(76, 29, 149, .12);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #120d1c; --bg2: #1a1228; --card: #1d1530; --text: #eee8f8; --muted: #b3a8c9; --line: #33284a;
+      --accent: #c4a1ff; --accent-2: #d8b4fe; --chip: #2a1f40; --shadow: 0 10px 30px rgba(0, 0, 0, .4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  a { color: var(--accent); }
+  img, video { max-width: 100%; height: auto; display: block; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  section { padding: 56px 0; }
+  h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
+  h2 { font-size: clamp(26px, 4vw, 34px); margin-bottom: 18px; }
+  h3 { font-size: 19px; margin-bottom: 6px; }
+  p { margin: 0 0 14px; }
+  kbd { font: 600 0.85em/1 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--chip); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; padding: 2px 6px; white-space: nowrap; }
+  code { font: 0.9em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--chip); border-radius: 5px; padding: 1px 5px; }
+
+  /* hero */
+  .hero { background: radial-gradient(900px 400px at 85% -10%, rgba(168, 85, 247, .25), transparent 60%), linear-gradient(180deg, var(--bg2), var(--bg)); padding: 56px 0 40px; }
+  .brand { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .brand img { width: 72px; height: 72px; }
+  .hero h1 { font-size: clamp(34px, 6vw, 56px); font-weight: 800; }
+  .hero .pitch { font-size: clamp(20px, 3vw, 26px); color: var(--accent-2); font-weight: 600; margin: 18px 0 10px; }
+  .hero .lede { color: var(--muted); max-width: 700px; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin: 26px 0 34px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 999px; font-weight: 650; text-decoration: none; border: 1.5px solid var(--accent); }
+  .btn.primary { background: #6b21a8; border-color: #6b21a8; color: #fff; }
+  .btn.ghost { color: var(--accent); background: transparent; }
+  .btn small { font-weight: 500; opacity: .8; }
+  .video { border-radius: 16px; overflow: hidden; box-shadow: var(--shadow), 0 0 0 1px var(--line); background: #fff; aspect-ratio: 16 / 10; }
+  .video video { width: 100%; height: 100%; }
+
+  /* why */
+  .why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .why div { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; }
+  .why p { color: var(--muted); margin: 0; font-size: 16px; }
+
+  /* features */
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+  .feature { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px 22px; box-shadow: var(--shadow); }
+  .feature .ico { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--chip); color: var(--accent); margin-bottom: 12px; }
+  .feature .ico svg { width: 22px; height: 22px; }
+  .feature p { color: var(--muted); margin: 0; font-size: 16px; }
+
+  /* screenshots */
+  .shots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .shots a { display: block; border-radius: 12px; overflow: hidden; box-shadow: var(--shadow), 0 0 0 1px var(--line); }
+  .demo-link { margin-top: 22px; }
+
+  /* install / privacy / faq */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; }
+  ol, ul { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  .muted { color: var(--muted); }
+  details { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px; margin-bottom: 10px; }
+  summary { cursor: pointer; font-weight: 650; }
+  details p { margin: 10px 0 0; color: var(--muted); }
+
+  footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 10px 24px; justify-content: space-between; }
+
+  @media (max-width: 760px) {
+    section { padding: 40px 0; }
+    .why, .shots, .cols { grid-template-columns: 1fr; }
+    .brand img { width: 56px; height: 56px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="brand">
+      <img src="img/icon.svg" alt="" width="72" height="72">
+      <h1>Pane Zoom for Gmail</h1>
+    </div>
+    <p class="pitch">Zoom the email, not the whole of Gmail.</p>
+    <p class="lede">A small Chrome extension that puts a <kbd>−</kbd> <kbd>%</kbd> <kbd>+</kbd> control on Gmail's reading pane. It enlarges just the message you're reading, remembers the level for each sender, and brings it to every machine you use Gmail on. No login.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#install">Chrome Web Store <small>(coming soon)</small></a>
+      <a class="btn ghost" href="demo/">Try the live demo</a>
+      <a class="btn ghost" href="https://github.com/7-of-9/gmail_zoom">Source on GitHub</a>
+    </div>
+    <div class="video">
+      <video src="img/demo.mp4" poster="img/demo-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Demo: zooming a newsletter with Cmd+Shift+Plus, switching senders, and a wide table fitting the pane"></video>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section>
+    <div class="wrap">
+      <h2>Why</h2>
+      <div class="why">
+        <div><h3>Chrome's zoom is all or nothing</h3><p>⌘+ blows up the whole Gmail window: inbox, sidebars, toolbars. You wanted bigger text in one email.</p></div>
+        <div><h3>Some mail is just small</h3><p>Newsletters set in 12px, dense notification threads, receipts with 10px fine print. Squinting isn't a workflow.</p></div>
+        <div><h3>Every sender is different</h3><p>The newsletter you read closely wants 150%; notifications are fine at 110%. Set each once and forget it.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="background: var(--bg2)">
+    <div class="wrap">
+      <h2>What it does</h2>
+      <div class="features">
+        <div class="feature">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
+          <h3>Per-sender zoom, remembered</h3>
+          <p>The level sticks to whoever sent the message. Senders you haven't set yet open at the last level you picked.</p>
+        </div>
+        <div class="feature">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 15h10"/></svg></div>
+          <h3>Keyboard shortcuts</h3>
+          <p><kbd>⌘⇧+</kbd> / <kbd>⌘⇧−</kbd> on Mac, <kbd>Ctrl+Shift+=</kbd> / <kbd>Ctrl+Shift+−</kbd> on Windows and Linux. Click the % to go back to 100%.</p>
+        </div>
+        <div class="feature">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8a8 8 0 0 0-14.5-2.5L4 7"/><path d="M4 3v4h4"/><path d="M4 16a8 8 0 0 0 14.5 2.5L20 17"/><path d="M20 21v-4h-4"/></svg></div>
+          <h3>All your machines, no login</h3>
+          <p>Your Gmail account is the identity. Install it on your laptop and your desktop and the levels follow you automatically.</p>
+        </div>
+        <div class="feature">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg></div>
+          <h3>Wide emails fit the pane</h3>
+          <p>Fixed-width newsletters and Outlook tables reflow to the pane when zoomed, instead of running off the side.</p>
+        </div>
+        <div class="feature">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg></div>
+          <h3>One text size</h3>
+          <p>Headings, small print and the subject line are evened out, so the message reads at one size.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>Screenshots</h2>
+      <div class="shots">
+        <a href="img/screenshot-1@2x.jpg"><img src="img/screenshot-1.png" srcset="img/screenshot-1.png 1x, img/screenshot-1@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="A newsletter zoomed to 150% in the reading pane, with the zoom control and its shortcut tooltip"></a>
+        <a href="img/screenshot-2@2x.jpg"><img src="img/screenshot-2.png" srcset="img/screenshot-2.png 1x, img/screenshot-2@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="Two senders side by side: a newsletter at 150% and code notifications at 110%"></a>
+        <a href="img/screenshot-3@2x.jpg"><img src="img/screenshot-3.png" srcset="img/screenshot-3.png 1x, img/screenshot-3@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="An Outlook-style email with a wide table fitting the pane at 170%"></a>
+        <a href="img/screenshot-4@2x.jpg"><img src="img/screenshot-4.png" srcset="img/screenshot-4.png 1x, img/screenshot-4@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="A laptop and a desktop showing the same message at the same 130% zoom"></a>
+      </div>
+      <p class="demo-link"><a class="btn ghost" href="demo/">Try the live demo</a> <span class="muted">The real extension code, running on a fake mailbox in your browser.</span></p>
+    </div>
+  </section>
+
+  <section id="install" style="background: var(--bg2)">
+    <div class="wrap">
+      <h2>Install</h2>
+      <div class="cols">
+        <div class="card">
+          <h3>Chrome Web Store</h3>
+          <p class="muted">Coming soon. Once it's listed, this button will take you there, and Chrome will keep it up to date.</p>
+          <p><a class="btn primary" href="#install">Chrome Web Store <small>(coming soon)</small></a></p>
+        </div>
+        <div class="card">
+          <h3>Or load it unpacked from GitHub</h3>
+          <ol>
+            <li>Download or clone <a href="https://github.com/7-of-9/gmail_zoom">github.com/7-of-9/gmail_zoom</a>.</li>
+            <li>Open <code>chrome://extensions</code> and turn on <b>Developer mode</b> (top right).</li>
+            <li>Click <b>Load unpacked</b> and pick the folder.</li>
+            <li>Reload your Gmail tab and open an email.</li>
+          </ol>
+          <p class="muted">Works in Chrome and other Chromium browsers (Edge, Brave, Arc).</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="wrap">
+      <h2>Privacy, plainly</h2>
+      <div class="cols">
+        <div>
+          <p>The extension runs only on <code>mail.google.com</code>. It reads the sender's address from the header of the email you have open, to pick the zoom, and your Gmail address from the tab title, to know whose settings these are. It never reads or sends message content.</p>
+          <p>To sync, it sends a small Azure server only <b>one-way SHA-256 hashes</b> of your Gmail address and of sender addresses, plus zoom numbers and timestamps. No names, no addresses, no mail content, no analytics, no ads.</p>
+        </div>
+        <div>
+          <p><b>The trade-off of no login:</b> someone who already knows your Gmail address could check whether you've zoomed a sender they guess, or change your levels. They can't list who emails you or read any mail.</p>
+          <p>Right-click the toolbar icon to switch off <b>Sync zoom levels across machines</b>, or to <b>Delete synced zoom levels (all machines)</b>.</p>
+          <p><a href="privacy.html">Full privacy policy →</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="background: var(--bg2)">
+    <div class="wrap">
+      <h2>FAQ</h2>
+      <details><summary>Does it read my email?</summary><p>No. It reads only the sender's address in the header of the open message, to pick the zoom, and it hashes that address before anything leaves your browser. Message text never leaves your browser.</p></details>
+      <details><summary>Do I need an account or a login?</summary><p>No. The Gmail account you're signed in to is the identity, so the same settings appear on every machine where you install the extension and open that Gmail account.</p></details>
+      <details><summary>Does it work with several Gmail accounts?</summary><p>Yes. Each account has its own settings, and each syncs on its own.</p></details>
+      <details><summary>Google Workspace accounts?</summary><p>Yes, including Workspace accounts with a custom-branded Gmail.</p></details>
+      <details><summary>Can I turn sync off?</summary><p>Yes. Right-click the toolbar icon and untick “Sync zoom levels across machines”. Your levels then stay in this browser only.</p></details>
+      <details><summary>What does it cost?</summary><p>Nothing. It's free and open source under the MIT license.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Pane Zoom for Gmail · <a href="https://github.com/7-of-9/gmail_zoom">GitHub</a> · <a href="privacy.html">Privacy</a> · MIT license</span>
+    <span>Not affiliated with or endorsed by Google. Gmail is a trademark of Google LLC.</span>
+  </div>
+</footer>
+</body>
+</html>
