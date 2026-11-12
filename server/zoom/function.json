@@ -1,0 +1,11 @@
+{
+  "bindings": [
+    { "type": "httpTrigger", "direction": "in", "name": "req", "authLevel": "anonymous",
+      "methods": ["get", "post", "options"], "route": "v1/zoom/{acct}" },
+    { "type": "http", "direction": "out", "name": "res" },
+    { "type": "blob", "direction": "in", "name": "stored", "path": "zoom/{acct}.json",
+      "connection": "AzureWebJobsStorage", "dataType": "string" },
+    { "type": "blob", "direction": "out", "name": "saved", "path": "zoom/{acct}.json",
+      "connection": "AzureWebJobsStorage" }
+  ]
+}

@@ -1,11 +1,11 @@
-// Gmail Pane Zoom: floating − / + at the top-left of the reading pane that zoom
-// only the open conversation (subject + message bodies).
+// Pane Zoom for Gmail: floating − / + at the top-left of the reading pane that
+// zoom only the open conversation (subject + message bodies).
 //
-// - Zoom is remembered per sender address (localStorage). Senders you have not
-//   set yet use the last level you picked.
-// - Zoomed fixed-width HTML emails are reflowed to the pane width (content.css,
-//   .gpz-fit); if one still won't fit, that message's zoom is capped (never
-//   below 100%) so nothing goes off the side of the pane.
+// - Zoom is remembered per sender, per Gmail account, and synced across your
+//   machines with no login: the Gmail account you're in is the identity.
+//   Senders you have not set yet use the last level you picked.
+// - Zoomed fixed-width HTML emails are reflowed to the pane width; anything
+//   that still won't fit is shrunk on its own (see fitBody).
 // - Shortcuts: Cmd+Shift+= / Cmd+Shift+- (Ctrl+Shift on Windows/Linux).
 //
 // DOM is built with createElement/textContent and styled via CSSOM only,
@@ -14,38 +14,171 @@
   'use strict';
   if (window.top !== window || document.getElementById('gpz-bar')) return;
 
-  const KEY = 'gmailPaneZoom.v2'; // {def, senders: {address: zoom}}
-  const OLD_KEY = 'gmailPaneZoom'; // v1: one global number, migrated to def
-  const VAR = '--gpz-zoom';        // default level, read by content.css
+  const LOCAL = 'gmailPaneZoom.v3.';  // + account key: sync document, below
+  const OLD = 'gmailPaneZoom.v2';     // before sync: {def, senders: {address: zoom}}
+  const OLDER = 'gmailPaneZoom';      // v1: one global number
+  const VAR = '--gpz-zoom';           // default level, read by content.css
   const MIN = 0.5;
   const MAX = 3;
   const STEP = 0.1;
+  const SYNC_EVERY = 5 * 60 * 1000;   // while the tab is visible
 
   const clamp = (z) => Math.min(MAX, Math.max(MIN, Math.round(z * 100) / 100));
   const pctText = (z) => `${Math.round(z * 100)}%`;
 
-  // ---- settings ----------------------------------------------------------
-  function load() {
-    try {
-      const s = JSON.parse(localStorage.getItem(KEY) || 'null');
-      if (s && typeof s === 'object') {
-        return { def: clamp(+s.def || 1), senders: s.senders && typeof s.senders === 'object' ? s.senders : {} };
+  // ---- hashing: addresses never leave the browser ------------------------
+  // Synchronous SHA-256 (crypto.subtle is async, and a hash is needed while
+  // laying out each message). Tested against Node's crypto in test/.
+  const K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ];
+  function sha256(text) {
+    const bytes = new TextEncoder().encode(text);
+    const n = ((bytes.length + 72) >> 6) << 6;
+    const m = new Uint8Array(n);
+    m.set(bytes);
+    m[bytes.length] = 0x80;
+    const v = new DataView(m.buffer);
+    v.setUint32(n - 8, Math.floor(bytes.length / 0x20000000));
+    v.setUint32(n - 4, (bytes.length * 8) >>> 0);
+    const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const w = new Int32Array(64);
+    const ror = (x, r) => (x >>> r) | (x << (32 - r));
+    for (let i = 0; i < n; i += 64) {
+      for (let j = 0; j < 16; j++) w[j] = v.getInt32(i + j * 4);
+      for (let j = 16; j < 64; j++) {
+        const a = w[j - 15], b = w[j - 2];
+        w[j] = w[j - 16] + (ror(a, 7) ^ ror(a, 18) ^ (a >>> 3)) + w[j - 7] + (ror(b, 17) ^ ror(b, 19) ^ (b >>> 10));
       }
-      return { def: clamp(parseFloat(localStorage.getItem(OLD_KEY)) || 1), senders: {} };
-    } catch {
-      return { def: 1, senders: {} };
+      let [a, b, c, d, e, f, g, h] = H;
+      for (let j = 0; j < 64; j++) {
+        const t1 = (h + (ror(e, 6) ^ ror(e, 11) ^ ror(e, 25)) + ((e & f) ^ (~e & g)) + K[j] + w[j]) | 0;
+        const t2 = ((ror(a, 2) ^ ror(a, 13) ^ ror(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      [a, b, c, d, e, f, g, h].forEach((x, k) => { H[k] = (H[k] + x) | 0; });
     }
+    const out = new Uint8Array(32);
+    const ov = new DataView(out.buffer);
+    H.forEach((x, k) => ov.setInt32(k * 4, x));
+    return out;
   }
-  let state = load();
-  const save = () => {
-    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* blocked: session only */ }
-  };
-  const zoomFor = (sender) => clamp((sender && +state.senders[sender]) || state.def);
+  const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-  // Another Gmail tab changed the settings: follow.
+  // ---- which Gmail account ----------------------------------------------
+  // Gmail's tab title is "<view> - <address> - <Gmail or the org's name>".
+  const EMAIL = /^[^\s@()]+@[^\s@()]+\.[^\s@()]+$/;
+  function detectAccount() {
+    const parts = document.title.split(' - ').map((p) => p.trim());
+    for (let i = parts.length - 1; i >= 0; i--) if (EMAIL.test(parts[i])) return parts[i].toLowerCase();
+    const a = document.querySelector('a[href^="https://accounts.google.com/SignOutOptions"][aria-label]');
+    const m = a && a.getAttribute('aria-label').match(/[^\s@()]+@[^\s@()]+\.[^\s@()]+/);
+    return m ? m[0].toLowerCase() : '';
+  }
+  let acct = '';    // Gmail address, lowercased; '' until known
+  let acctKey = ''; // its hash: the sync id and the localStorage suffix
+  const senderKeys = new Map();
+  function senderKey(addr) {
+    let k = senderKeys.get(addr);
+    if (!k) senderKeys.set(addr, (k = b64url(sha256(`gpz1|${acct}|${addr}`).subarray(0, 16))));
+    return k;
+  }
+
+  // ---- settings: { d: [zoom, t], s: { senderKey: [zoom, t] } } -------------
+  // d = level for senders not set yet, s = per sender, t = when it was set
+  // (ms). The newest t wins per entry when tabs or machines merge.
+  const valid = (e) => Array.isArray(e) && +e[0] >= MIN && +e[0] <= MAX && +e[1] >= 0;
+  function mergeInto(doc, other) {
+    let changed = false;
+    if (!other || typeof other !== 'object') return false;
+    if (valid(other.d) && (!doc.d || +other.d[1] > doc.d[1])) { doc.d = [clamp(+other.d[0]), +other.d[1]]; changed = true; }
+    for (const [k, e] of Object.entries(other.s && typeof other.s === 'object' ? other.s : {})) {
+      if (valid(e) && (!doc.s[k] || +e[1] > doc.s[k][1])) { doc.s[k] = [clamp(+e[0]), +e[1]]; changed = true; }
+    }
+    return changed;
+  }
+  const blank = () => ({ d: null, s: {} });
+  const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
+
+  // Settings from before sync (one set for every account), stamped t=1 so a
+  // real change from any machine wins over them.
+  function legacy(withSenders) {
+    const doc = blank();
+    const o = readJSON(OLD);
+    if (o && typeof o === 'object') {
+      doc.d = [clamp(+o.def || 1), 1];
+      if (withSenders) {
+        for (const [addr, z] of Object.entries(o.senders || {})) if (+z) doc.s[senderKey(addr)] = [clamp(+z), 1];
+      }
+    } else if (parseFloat(readJSON(OLDER))) {
+      doc.d = [clamp(parseFloat(readJSON(OLDER))), 1];
+    }
+    return doc;
+  }
+  function load() {
+    const doc = blank();
+    if (!mergeInto(doc, readJSON(LOCAL + acctKey))) mergeInto(doc, legacy(true));
+    return doc;
+  }
+  let state = legacy(false); // until the account is known: old default only
+  const save = () => {
+    if (!acctKey) return;
+    try { localStorage.setItem(LOCAL + acctKey, JSON.stringify(state)); } catch { /* blocked: session only */ }
+  };
+  const defZoom = () => (state.d ? state.d[0] : 1);
+  const zoomFor = (sender) => {
+    const e = sender && acct ? state.s[senderKey(sender)] : null;
+    return e ? e[0] : defZoom();
+  };
+
+  // Another Gmail tab of this account changed the settings: follow.
   window.addEventListener('storage', (e) => {
-    if (e.key === KEY) { state = load(); tick(); }
+    if (acctKey && e.key === LOCAL + acctKey) { state = load(); tick(); }
   });
+
+  // ---- sync across machines (background.js talks to the server) -----------
+  let syncStatus = 'connecting'; // shown in the tooltip
+  let syncTimer = 0;
+  let lastSync = 0;
+  const syncSoon = (ms) => { clearTimeout(syncTimer); syncTimer = setTimeout(sync, ms); };
+  async function sync() {
+    clearTimeout(syncTimer);
+    if (!acctKey) return;
+    lastSync = Date.now();
+    let r = null;
+    try {
+      r = await chrome.runtime.sendMessage({ type: 'gpz-sync', acct: acctKey, doc: state });
+    } catch { /* extension reloaded or updated: this page's script is orphaned */ }
+    if (r && r.off) { syncStatus = 'off'; return; }
+    if (!r || !r.doc) { syncStatus = 'error'; syncSoon(60000); return; }
+    syncStatus = 'on';
+    if (mergeInto(state, r.doc)) { save(); tick(); }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && Date.now() - lastSync > 30000) sync();
+  });
+  setInterval(() => { if (document.visibilityState === 'visible') sync(); }, SYNC_EVERY);
+  try {
+    chrome.storage.onChanged.addListener((c) => { if ('syncOff' in c) sync(); }); // toggled in the menu
+  } catch { /* orphaned */ }
+
+  function findAccount() {
+    if (acct) return;
+    const a = detectAccount();
+    if (!a) return;
+    acct = a;
+    acctKey = b64url(sha256(`gpz1|${a}`));
+    state = load();
+    save();
+    sync();
+  }
 
   // ---- which message, which sender ----------------------------------------
   const shown = (el) => el.getBoundingClientRect().width > 0;
@@ -197,14 +330,22 @@
   function setFocusZoom(z) {
     z = clamp(z);
     const s = focus ? senderOf(focus) : '';
-    if (s) state.senders[s] = z;
-    state.def = z; // senders not set yet follow your latest choice
+    const t = Date.now();
+    if (s && acct) state.s[senderKey(s)] = [z, t];
+    state.d = [z, t]; // senders not set yet follow your latest choice
     save();
+    syncSoon(2000);
     tick();
   }
   const step = (d) => setFocusZoom(zoomFor(focus ? senderOf(focus) : '') + d * STEP);
 
   const setText = (el, prop, v) => { if (el[prop] !== v) el[prop] = v; };
+  const SYNC_TEXT = {
+    connecting: 'sync: connecting…',
+    on: 'synced across machines for @',
+    off: 'sync off (toolbar icon menu)',
+    error: 'sync: server unreachable, retrying',
+  };
 
   function render() {
     const s = focus ? senderOf(focus) : '';
@@ -216,7 +357,8 @@
       `${KEY_IN}   zoom in`,
       `${KEY_OUT}   zoom out`,
       'click %   back to 100%',
-      `Gmail Pane Zoom${version ? ` v${version}` : ''}`,
+      SYNC_TEXT[syncStatus].replace('@', acct || 'this account'),
+      `Pane Zoom for Gmail${version ? ` v${version}` : ''}`,
     ].join('\n'));
     out.disabled = z <= MIN;
     inn.disabled = z >= MAX;
@@ -252,8 +394,9 @@
   // ---- main loop (Gmail is a SPA: panes come and go without events) ---------
   function tick() {
     if (!bar.isConnected && document.body) document.body.append(bar);
-    if (document.documentElement.style.getPropertyValue(VAR) !== String(state.def)) {
-      document.documentElement.style.setProperty(VAR, String(state.def));
+    findAccount();
+    if (document.documentElement.style.getPropertyValue(VAR) !== String(defZoom())) {
+      document.documentElement.style.setProperty(VAR, String(defZoom()));
     }
 
     const bodies = [...document.querySelectorAll('.a3s')].filter(shown);
@@ -262,7 +405,7 @@
     // The subject follows the newest open message's sender.
     const subject = firstShown('h2.hP');
     if (subject) {
-      const z = String(bodies.length ? zoomFor(senderOf(bodies[bodies.length - 1])) : state.def);
+      const z = String(bodies.length ? zoomFor(senderOf(bodies[bodies.length - 1])) : defZoom());
       if (subject.style.zoom !== z) subject.style.zoom = z;
     }
 
