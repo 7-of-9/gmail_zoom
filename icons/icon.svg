@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- Square mauve tile, dark purple border (matches the in-page buttons) -->
+  <rect x="4" y="4" width="120" height="120" fill="#d8b4fe" stroke="#6b21a8" stroke-width="8"/>
+  <!-- Magnifier with plus: zoom -->
+  <circle cx="54" cy="54" r="29" fill="#f5edff" stroke="#4c1d95" stroke-width="11"/>
+  <line x1="76" y1="76" x2="104" y2="104" stroke="#4c1d95" stroke-width="15" stroke-linecap="square"/>
+  <path d="M54 40v28M40 54h28" stroke="#4c1d95" stroke-width="9"/>
+</svg>

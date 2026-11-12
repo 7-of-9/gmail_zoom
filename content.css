@@ -1,0 +1,54 @@
+/* What gets zoomed: the conversation subject and each message body.
+   content.js sets each one's zoom inline (per sender); this var is only the
+   default for a body it hasn't reached yet. Keep selectors non-nested: zoom
+   multiplies. */
+h2.hP,
+.a3s {
+  zoom: var(--gpz-zoom, 1);
+}
+
+/* Zoomed bodies: reflow fixed-width layouts (600px newsletters, receipts) to
+   the pane width instead of letting them run off the side. */
+.a3s.gpz-fit { overflow-wrap: break-word; }
+.a3s.gpz-fit * { max-width: 100% !important; }
+.a3s.gpz-fit table,
+.a3s.gpz-fit div { min-width: 0 !important; }
+.a3s.gpz-fit img[width],
+.a3s.gpz-fit img[style*="width"] { height: auto !important; }
+.a3s.gpz-fit pre { white-space: pre-wrap !important; }
+
+/* Floating control. The outer bar is positioned by content.js at the pane's
+   top-left (unzoomed, so its left/top stay true); the inner row is scaled
+   inline to the focused message's zoom. */
+#gpz-bar {
+  position: fixed;
+  z-index: 2147483000;
+  display: none;
+  user-select: none;
+}
+#gpz-bar.gpz-on { display: block; }
+
+#gpz-row {
+  display: flex;
+  gap: 3px;
+}
+
+#gpz-row button {
+  all: unset;
+  box-sizing: border-box;
+  height: 28px;
+  min-width: 28px;
+  padding: 0 5px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #6b21a8;            /* dark purple */
+  border-radius: 0;
+  background: rgba(216, 180, 254, 0.5); /* light mauve, 50% */
+  color: #4c1d95;
+  font: 700 18px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+#gpz-row button:hover { background: rgba(216, 180, 254, 0.9); }
+#gpz-row button:disabled { opacity: 0.4; cursor: default; }
+#gpz-row button.gpz-pct { min-width: 50px; font-size: 12px; }
