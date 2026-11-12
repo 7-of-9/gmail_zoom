@@ -107,20 +107,25 @@
 
   // ---- UI ----------------------------------------------------------------
   const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
-  const mod = /mac/i.test(platform) ? '⌘⇧' : 'Ctrl+Shift+';
+  const mac = /mac/i.test(platform);
+  const KEY_IN = mac ? '⌘⇧+' : 'Ctrl+Shift+=';
+  const KEY_OUT = mac ? '⌘⇧−' : 'Ctrl+Shift+−';
 
-  const button = (text, onClick, cls) => {
+  const button = (text, onClick, cls, label) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.textContent = text;
     if (cls) b.className = cls;
+    if (label) b.setAttribute('aria-label', label);
     b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); onClick(); });
     return b;
   };
 
-  const out = button('−', () => step(-1));
-  const pct = button('', () => setFocusZoom(1), 'gpz-pct');
-  const inn = button('+', () => step(1));
+  const out = button('−', () => step(-1), '', `Zoom out (${KEY_OUT})`);
+  const pct = button('', () => setFocusZoom(1), 'gpz-pct', 'Back to 100%');
+  const inn = button('+', () => step(1), '', `Zoom in (${KEY_IN})`);
+  const tip = document.createElement('div'); // instant hover help, see content.css
+  tip.id = 'gpz-tip';
 
   let version = '';
   try { version = chrome.runtime.getManifest().version; } catch { /* extension reloaded */ }
@@ -130,7 +135,7 @@
   row.append(out, pct, inn);
   const bar = document.createElement('div');
   bar.id = 'gpz-bar';  // positioned, never zoomed
-  bar.append(row);
+  bar.append(row, tip);
   // Keep Gmail from treating clicks on the bar as clicks on the conversation,
   // and don't steal keyboard focus from Gmail.
   for (const t of ['mousedown', 'mouseup', 'pointerdown', 'pointerup', 'dblclick']) {
@@ -155,14 +160,14 @@
     const s = focus ? senderOf(focus) : '';
     const z = zoomFor(s);
     const got = focus ? parseFloat(focus.style.zoom) || z : z;
-    const who = s || 'this sender';
     setText(pct, 'textContent', pctText(z));
-    setText(pct, 'title', `${who}: ${pctText(z)}`
-      + (got < z ? ` (shown at ${pctText(got)} so it fits the pane)` : '')
-      + '\nClick: back to 100%'
-      + `\nGmail Pane Zoom v${version}`);
-    setText(out, 'title', `Zoom out ${who} (${mod}−)`);
-    setText(inn, 'title', `Zoom in ${who} (${mod}+)`);
+    setText(tip, 'textContent', [
+      `${s || 'this sender'}: ${pctText(z)}${got < z ? ` (shown at ${pctText(got)} to fit)` : ''}`,
+      `${KEY_IN}   zoom in`,
+      `${KEY_OUT}   zoom out`,
+      'click %   back to 100%',
+      `Gmail Pane Zoom${version ? ` v${version}` : ''}`,
+    ].join('\n'));
     out.disabled = z <= MIN;
     inn.disabled = z >= MAX;
   }

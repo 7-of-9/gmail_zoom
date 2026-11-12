@@ -54,3 +54,21 @@ h2.hP,
 #gpz-row button:hover { background: rgba(216, 180, 254, 0.9); }
 #gpz-row button:disabled { opacity: 0.4; cursor: default; }
 #gpz-row button.gpz-pct { min-width: 42px; font-size: 11px; }
+
+/* Hover help: sender, shortcuts, version. Shown instantly (native title
+   tooltips take ~1s and are easy to miss). */
+#gpz-tip {
+  position: absolute;
+  left: 0;
+  top: 100%;
+  margin-top: 4px;
+  display: none;
+  padding: 4px 7px;
+  border: 1.5px solid #6b21a8;
+  background: #4c1d95;
+  color: #fff;
+  font: 500 11px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  white-space: pre;
+  pointer-events: none;
+}
+#gpz-bar:hover #gpz-tip { display: block; }
