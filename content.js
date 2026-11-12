@@ -217,6 +217,51 @@
     return below || bodies[bodies.length - 1];
   }
 
+  // ---- one text size per message -------------------------------------------
+  // Emails mix sizes (headings, 9pt signatures, list numbers in another font)
+  // and Gmail's subject is far bigger than any body text. Every visible piece
+  // of text in a body is set to the size most of that body's text already
+  // has; the subject gets the newest message's size (see tick). Zoom then
+  // scales one uniform size. Text under 4px is left alone: it's hidden on
+  // purpose (preview-text and spacer tricks).
+  const evened = new WeakMap(); // body -> { size, n: element count when done }
+  const INVISIBLE = /[\s ͏​-‍⁠﻿]+/g;
+
+  function evenText(body) {
+    const n = body.getElementsByTagName('*').length; // cheap: changes only when Gmail adds content
+    const done = evened.get(body);
+    if (done && done.n === n) return done.size;
+    const chars = new Map(); // element -> visible characters directly inside it
+    const tw = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
+    for (let t = tw.nextNode(); t; t = tw.nextNode()) {
+      const len = t.data.replace(INVISIBLE, '').length;
+      if (len && t.parentElement) chars.set(t.parentElement, (chars.get(t.parentElement) || 0) + len);
+    }
+    const bySize = new Map();
+    const els = [];
+    for (const [el, len] of chars) {
+      const fs = parseFloat(getComputedStyle(el).fontSize);
+      if (!(fs >= 4)) continue;
+      els.push(el);
+      const k = Math.round(fs * 2) / 2;
+      bySize.set(k, (bySize.get(k) || 0) + len);
+    }
+    let size = 0;
+    let most = 0;
+    for (const [k, len] of bySize) if (len > most) { most = len; size = k; }
+    if (size) {
+      const px = `${size}px`;
+      for (const el of [...els, ...body.querySelectorAll('li')]) {
+        if (el.style.getPropertyValue('font-size') !== px) el.style.setProperty('font-size', px, 'important');
+        // a fixed line height made for smaller text would make lines overlap
+        const lh = parseFloat(getComputedStyle(el).lineHeight);
+        if (lh && lh < size * 1.15) el.style.setProperty('line-height', 'normal', 'important');
+      }
+    }
+    evened.set(body, { size, n: body.getElementsByTagName('*').length });
+    return size;
+  }
+
   // ---- zoom one body, keeping it inside the pane --------------------------
   // The body always gets the zoom asked for; the text is what you want bigger.
   // When zoomed in, anything that won't fit the pane is dealt with in steps,
@@ -400,13 +445,20 @@
     }
 
     const bodies = [...document.querySelectorAll('.a3s')].filter(shown);
-    for (const b of bodies) fitBody(b, zoomFor(senderOf(b)));
+    for (const b of bodies) { evenText(b); fitBody(b, zoomFor(senderOf(b))); }
 
-    // The subject follows the newest open message's sender.
+    // The subject follows the newest open message: its sender's zoom and its
+    // text size, so title and body read at the same size.
     const subject = firstShown('h2.hP');
     if (subject) {
-      const z = String(bodies.length ? zoomFor(senderOf(bodies[bodies.length - 1])) : defZoom());
+      const last = bodies[bodies.length - 1];
+      const z = String(last ? zoomFor(senderOf(last)) : defZoom());
       if (subject.style.zoom !== z) subject.style.zoom = z;
+      const size = last ? evenText(last) : 0;
+      if (size && subject.style.getPropertyValue('font-size') !== `${size}px`) {
+        subject.style.setProperty('font-size', `${size}px`, 'important');
+        subject.style.setProperty('line-height', 'normal', 'important');
+      }
     }
 
     const pane = paneRect(subject || bodies[0]);

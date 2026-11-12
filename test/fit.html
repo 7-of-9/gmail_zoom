@@ -18,7 +18,11 @@
   <div class="msg" id="m1">
     <span class="gD" email="outlook@example.com">Outlook Sender</span>
     <div class="a3s" id="b1">
-      <p class="MsoNormal">Dear Sir, thank you for the brief. Our fees are set out below.</p>
+      <p class="MsoNormal" style="font-size:12pt">Dear Sir, thank you for the brief. Our fees are set out below. We would be pleased to assist you with this matter and have set out the scope.</p>
+      <h1>A heading in the email</h1>
+      <ol><li><span style="font-size:12pt">Claim proceedings</span></li><li><span style="font-size:12pt">Precautionary attachment</span></li></ol>
+      <p style="font-size:9px;line-height:10px">Small print signature line that should read at the same size as the rest of the message.</p>
+      <div style="font-size:1px;line-height:1px;color:#fff">hidden preview text stays hidden</div>
       <table border="0" cellspacing="0" cellpadding="0"><tr><td>
         <table border="1" width="702" style="width:526.85pt;border-collapse:collapse">
           <tr><td width="389" style="width:291.5pt"><p class="MsoNormal" style="white-space:nowrap">Founding Partner, Managing Partner</p></td>
@@ -67,8 +71,11 @@
         zoom: b.style.zoom, fit2: b.classList.contains('gpz-fit2'),
         shrunk: [...b.querySelectorAll('.gpz-shrunk')].map((e) => `${e.tagName}@${e.style.zoom}`),
         overflowPx: Math.round(worst), scrollW: b.scrollWidth, clientW: b.clientWidth,
+        sizes: [...new Set([...b.querySelectorAll('*')].filter((e) => !e.closest('.gpz-shrunk') && [...e.childNodes].some((n) => n.nodeType === 3 && n.data.trim()) && parseFloat(getComputedStyle(e).fontSize) >= 4).map((e) => getComputedStyle(e).fontSize))],
       };
     }
+    const h = document.querySelector('h2.hP');
+    res.subject = { size: getComputedStyle(h).fontSize, zoom: h.style.zoom, newestBody: getComputedStyle(document.getElementById('b3')).fontSize };
     document.getElementById('out').textContent = 'RESULT ' + JSON.stringify(res);
   }, 2000);
 </script>

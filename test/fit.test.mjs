@@ -17,8 +17,13 @@ for (const z of [0.9, 1.3, 1.7, 3]) {
       '--virtual-time-budget=4000', '--window-size=1000,1000', '--dump-dom', `file://${page}?z=${z}`],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     const res = JSON.parse(dom.match(/RESULT (\{.*?\})<\/pre>/s)[1].replace(/&quot;/g, '"'));
+    const subj = res.subject;
+    delete res.subject;
+    const subjOk = parseFloat(subj.zoom) === z && subj.size === subj.newestBody;
+    if (!subjOk) failed++;
+    console.log(`${subjOk ? 'ok  ' : 'FAIL'} z=${z} subject ${JSON.stringify(subj)}`);
     for (const [id, r] of Object.entries(res)) {
-      const ok = parseFloat(r.zoom) === z && (z <= 1 || r.overflowPx <= 1);
+      const ok = parseFloat(r.zoom) === z && (z <= 1 || r.overflowPx <= 1) && r.sizes.length === 1;
       if (!ok) failed++;
       console.log(`${ok ? 'ok  ' : 'FAIL'} z=${z} ${id} ${JSON.stringify(r)}`);
     }
