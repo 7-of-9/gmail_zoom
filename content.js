@@ -85,24 +85,74 @@
   }
 
   // ---- zoom one body, keeping it inside the pane --------------------------
-  const natural = new WeakMap(); // body -> min content width at 100%, screen px
+  // The body always gets the zoom asked for; the text is what you want bigger.
+  // When zoomed in, anything that won't fit the pane is dealt with in steps,
+  // each only if the one before wasn't enough:
+  //   1. .gpz-fit  : reflow (max-width: 100% on everything), see content.css
+  //   2. .gpz-fit2 : also drop fixed table/cell widths and no-wrap (Outlook
+  //                  tables in pt, signature blocks)
+  //   3. shrink    : each element still sticking out gets its own smaller zoom
+  //                  so it just fits; the rest of the message keeps its size
+  const fitted = new WeakMap();  // body -> "zoom|width" it was last set up for
+  const stuck = new WeakMap();   // body -> scrollWidth at which shrinking gave up
+  const ownZoom = new WeakMap(); // shrunk element -> its inline zoom before
+  const MIN_SHRINK = 0.25;
+
+  const overflows = (el) => el.scrollWidth > el.clientWidth + 1;
+
+  function unshrink(body) {
+    for (const e of body.querySelectorAll('.gpz-shrunk')) {
+      e.style.zoom = ownZoom.get(e) || '';
+      e.classList.remove('gpz-shrunk');
+    }
+  }
+
+  // Shrink the outermost elements that stick out past the body's right edge.
+  // Returns whether anything changed. Only descends into elements that
+  // overflow, so a message that fits costs one check.
+  function shrinkWide(body) {
+    const right = body.getBoundingClientRect().right;
+    let changed = false;
+    const walk = (parent) => {
+      for (const c of parent.children) {
+        const r = c.getBoundingClientRect();
+        if (r.width && r.right > right + 1) {
+          if (!ownZoom.has(c)) ownZoom.set(c, c.style.zoom);
+          const cur = c.classList.contains('gpz-shrunk') ? parseFloat(c.style.zoom) || 1 : 1;
+          const base = parseFloat(ownZoom.get(c)) || 1;
+          const f = Math.max(MIN_SHRINK, Math.floor(((right - r.left) / r.width) * cur * 100) / 100);
+          if (f < cur) {
+            c.style.zoom = String(Math.round(base * f * 100) / 100);
+            c.classList.add('gpz-shrunk');
+            changed = true;
+          }
+        } else if (c.clientWidth ? overflows(c) : c.children.length) {
+          walk(c);
+        }
+      }
+    };
+    walk(body);
+    return changed;
+  }
 
   function fitBody(el, want) {
-    const w = el.getBoundingClientRect().width; // screen px it must fit in
+    const w = el.getBoundingClientRect().width;
     if (!w || !el.clientWidth) return;
-    el.classList.toggle('gpz-fit', want > 1);  // reflow fixed-width layouts
-    if (want <= 1) natural.delete(el);
-    const cur = parseFloat(el.style.zoom) || state.def;
-    if (want > 1 && el.scrollWidth > el.clientWidth + 1) {
-      // Still too wide after reflow. scrollWidth/clientWidth is a pure ratio,
-      // so this gives the content's width at 100% whatever zoom it has now.
-      natural.set(el, (w * el.scrollWidth) / el.clientWidth / cur);
+    const key = `${want}|${Math.round(w)}`;
+    if (fitted.get(el) !== key) { // new zoom or pane width: start over
+      fitted.set(el, key);
+      stuck.delete(el);
+      unshrink(el);
+      el.classList.remove('gpz-fit2');
+      el.classList.toggle('gpz-fit', want > 1);
+      if (el.style.zoom !== String(want)) el.style.zoom = String(want);
     }
-    const base = natural.get(el);
-    const z = want > 1 && base
-      ? Math.max(1, Math.min(want, Math.floor((w / base) * 100) / 100))
-      : want;
-    if (el.style.zoom !== String(z)) el.style.zoom = String(z);
+    if (want <= 1 || !overflows(el) || stuck.get(el) === el.scrollWidth) return;
+    if (!el.classList.contains('gpz-fit2')) {
+      el.classList.add('gpz-fit2');
+      if (!overflows(el)) return;
+    }
+    if (!shrinkWide(el)) stuck.set(el, el.scrollWidth); // retry if it grows (images)
   }
 
   // ---- UI ----------------------------------------------------------------
@@ -159,10 +209,10 @@
   function render() {
     const s = focus ? senderOf(focus) : '';
     const z = zoomFor(s);
-    const got = focus ? parseFloat(focus.style.zoom) || z : z;
+    const shrunk = !!(focus && focus.querySelector('.gpz-shrunk'));
     setText(pct, 'textContent', pctText(z));
     setText(tip, 'textContent', [
-      `${s || 'this sender'}: ${pctText(z)}${got < z ? ` (shown at ${pctText(got)} to fit)` : ''}`,
+      `${s || 'this sender'}: ${pctText(z)}${shrunk ? ' (wide parts shrunk to fit)' : ''}`,
       `${KEY_IN}   zoom in`,
       `${KEY_OUT}   zoom out`,
       'click %   back to 100%',

@@ -17,6 +17,15 @@ h2.hP,
 .a3s.gpz-fit img[style*="width"] { height: auto !important; }
 .a3s.gpz-fit pre { white-space: pre-wrap !important; }
 
+/* Still too wide (content.js adds .gpz-fit2): drop fixed pixel/pt widths on
+   tables and cells (Outlook writes width="702" style="width:526.85pt") and
+   let no-wrap cells wrap. Percentage widths are left alone. */
+.a3s.gpz-fit2 :is(table, td, th, col)[width]:not([width$="%"]),
+.a3s.gpz-fit2 :is(table, td, th)[style*="width:"],
+.a3s.gpz-fit2 :is(table, td, th)[style*="width: "] { width: auto !important; }
+.a3s.gpz-fit2 [nowrap],
+.a3s.gpz-fit2 [style*="nowrap"] { white-space: normal !important; }
+
 /* Floating control, positioned by content.js at the pane's top-left. Fixed
    small size; faint until hovered. */
 #gpz-bar {

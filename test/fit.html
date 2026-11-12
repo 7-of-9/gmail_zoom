@@ -1,0 +1,74 @@
+<!doctype html>
+<!-- Mock reading pane for the zoom/fit logic: same selectors as Gmail
+     (.gD[email] sender, .a3s body, h2.hP subject), fake content only.
+     Run: node test/fit.test.mjs -->
+<meta charset="utf-8">
+<style>
+  body { margin: 0; font: 14px Arial, sans-serif; }
+  #pane { position: absolute; left: 0; top: 0; width: 621px; height: 900px; overflow-y: auto; }
+  .msg { padding: 8px 0; }
+</style>
+<script>
+  // Per-sender levels for this run come from the query string: ?z=1.7
+  const z = parseFloat(new URLSearchParams(location.search).get('z') || '1.7');
+  localStorage.setItem('gmailPaneZoom.v2', JSON.stringify({ def: z, senders: {} }));
+</script>
+<div id="pane" role="main">
+  <h2 class="hP">Outlook table with fixed widths</h2>
+  <div class="msg" id="m1">
+    <span class="gD" email="outlook@example.com">Outlook Sender</span>
+    <div class="a3s" id="b1">
+      <p class="MsoNormal">Dear Sir, thank you for the brief. Our fees are set out below.</p>
+      <table border="0" cellspacing="0" cellpadding="0"><tr><td>
+        <table border="1" width="702" style="width:526.85pt;border-collapse:collapse">
+          <tr><td width="389" style="width:291.5pt"><p class="MsoNormal" style="white-space:nowrap">Founding Partner, Managing Partner</p></td>
+              <td nowrap width="313"><p class="MsoNormal">AED 3,000 reduced to AED 2,600</p></td></tr>
+          <tr><td width="389" style="width:291.5pt"><p class="MsoNormal">Senior Associate</p></td>
+              <td nowrap width="313"><p class="MsoNormal">AED 1,750 reduced to AED 1,500</p></td></tr>
+        </table>
+      </td></tr></table>
+      <p class="MsoNormal">Kind regards</p>
+    </div>
+  </div>
+  <div class="msg" id="m2">
+    <span class="gD" email="wide@example.com">Wide Sender</span>
+    <div class="a3s" id="b2">
+      <p>Text before a block that can't reflow.</p>
+      <div class="m_xyz" style="display:inline-block;width:900px;height:40px;background:#ccc">fixed 900px box</div>
+      <p>Text after it.</p>
+    </div>
+  </div>
+  <div class="msg" id="m4">
+    <span class="gD" email="classy@example.com">Class-styled Sender</span>
+    <style>.m_123nw { white-space: nowrap; }</style>
+    <div class="a3s" id="b4">
+      <p>A signature whose no-wrap comes from a stylesheet class, so only shrinking can fit it.</p>
+      <table><tr><td><span class="m_123nw">Tel +00 0000 0000 | Fax +00 0000 0001 | Level 00, Example Tower, Example Street, Example City</span></td></tr></table>
+      <p>Body text after the signature keeps its full size.</p>
+    </div>
+  </div>
+  <div class="msg" id="m3">
+    <span class="gD" email="plain@example.com">Plain Sender</span>
+    <div class="a3s" id="b3"><p>Short plain message that fits at any zoom.</p></div>
+  </div>
+</div>
+<pre id="out"></pre>
+<link rel="stylesheet" href="../content.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    const res = {};
+    for (const id of ['b1', 'b2', 'b3', 'b4']) {
+      const b = document.getElementById(id);
+      const br = b.getBoundingClientRect();
+      let worst = 0;
+      for (const d of b.querySelectorAll('*')) worst = Math.max(worst, d.getBoundingClientRect().right - br.right);
+      res[id] = {
+        zoom: b.style.zoom, fit2: b.classList.contains('gpz-fit2'),
+        shrunk: [...b.querySelectorAll('.gpz-shrunk')].map((e) => `${e.tagName}@${e.style.zoom}`),
+        overflowPx: Math.round(worst), scrollW: b.scrollWidth, clientW: b.clientWidth,
+      };
+    }
+    document.getElementById('out').textContent = 'RESULT ' + JSON.stringify(res);
+  }, 2000);
+</script>
