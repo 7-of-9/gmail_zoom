@@ -91,20 +91,28 @@
     return k;
   }
 
-  // ---- settings: { d: [zoom, t], s: { senderKey: [zoom, t] } } -------------
+  // ---- settings: { d: [zoom, t], s: { senderKey: [zoom, t] }, x: t } -------
   // d = level for senders not set yet, s = per sender, t = when it was set
-  // (ms). The newest t wins per entry when tabs or machines merge.
+  // (ms). The newest t wins per entry when tabs or machines merge. x = when
+  // synced data was deleted (toolbar menu): anything set before it is dropped.
   const valid = (e) => Array.isArray(e) && +e[0] >= MIN && +e[0] <= MAX && +e[1] >= 0;
   function mergeInto(doc, other) {
     let changed = false;
     if (!other || typeof other !== 'object') return false;
-    if (valid(other.d) && (!doc.d || +other.d[1] > doc.d[1])) { doc.d = [clamp(+other.d[0]), +other.d[1]]; changed = true; }
+    if (+other.x > doc.x) {
+      doc.x = +other.x;
+      if (doc.d && doc.d[1] <= doc.x) doc.d = null;
+      for (const k of Object.keys(doc.s)) if (doc.s[k][1] <= doc.x) delete doc.s[k];
+      changed = true;
+    }
+    const live = (e) => valid(e) && +e[1] > doc.x;
+    if (live(other.d) && (!doc.d || +other.d[1] > doc.d[1])) { doc.d = [clamp(+other.d[0]), +other.d[1]]; changed = true; }
     for (const [k, e] of Object.entries(other.s && typeof other.s === 'object' ? other.s : {})) {
-      if (valid(e) && (!doc.s[k] || +e[1] > doc.s[k][1])) { doc.s[k] = [clamp(+e[0]), +e[1]]; changed = true; }
+      if (live(e) && (!doc.s[k] || +e[1] > doc.s[k][1])) { doc.s[k] = [clamp(+e[0]), +e[1]]; changed = true; }
     }
     return changed;
   }
-  const blank = () => ({ d: null, s: {} });
+  const blank = () => ({ d: null, s: {}, x: 0 });
   const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
 
   // Settings from before sync (one set for every account), stamped t=1 so a
@@ -166,7 +174,10 @@
   });
   setInterval(() => { if (document.visibilityState === 'visible') sync(); }, SYNC_EVERY);
   try {
-    chrome.storage.onChanged.addListener((c) => { if ('syncOff' in c) sync(); }); // toggled in the menu
+    chrome.storage.onChanged.addListener((c) => { // toolbar menu
+      if (c.forgetAt && mergeInto(state, { x: c.forgetAt.newValue })) { save(); tick(); }
+      if (c.syncOff || c.forgetAt) sync();
+    });
   } catch { /* orphaned */ }
 
   function findAccount() {
@@ -178,6 +189,12 @@
     state = load();
     save();
     sync();
+    // remember this account's key so "Delete synced zoom levels" can reach it
+    try {
+      chrome.storage.local.get('accounts').then(({ accounts = [] }) => {
+        if (!accounts.includes(acctKey)) chrome.storage.local.set({ accounts: [...accounts, acctKey] });
+      }, () => {});
+    } catch { /* orphaned */ }
   }
 
   // ---- which message, which sender ----------------------------------------

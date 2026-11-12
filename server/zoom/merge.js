@@ -1,6 +1,8 @@
-// Sync document: { d: [zoom, t], s: { senderKey: [zoom, t] } }
+// Sync document: { d: [zoom, t], s: { senderKey: [zoom, t] }, x: t }
 //   d = default level for senders not set yet, s = per-sender levels,
 //   t = ms timestamp of the change. Newest t wins, per entry.
+//   x = "delete synced data" time: anything set at or before it is dropped,
+//   here and on every machine as it syncs.
 // Keys are client-side SHA-256 hashes (base64url); no addresses reach here.
 'use strict';
 
@@ -18,13 +20,16 @@ function entry(v, now) {
 
 // Validate and normalise anything into a document.
 function clean(doc, now = Date.now()) {
-  const out = { d: null, s: {} };
+  const out = { d: null, s: {}, x: 0 };
   if (!doc || typeof doc !== 'object') return out;
-  out.d = entry(doc.d, now);
+  const x = Math.floor(Number(doc.x));
+  out.x = x > 0 ? Math.min(x, now + DAY) : 0;
+  const live = (e) => (e && e[1] > out.x ? e : null);
+  out.d = live(entry(doc.d, now));
   const s = doc.s && typeof doc.s === 'object' ? doc.s : {};
   let list = [];
   for (const [k, v] of Object.entries(s)) {
-    const e = KEY.test(k) && entry(v, now);
+    const e = KEY.test(k) && live(entry(v, now));
     if (e) list.push([k, e]);
   }
   if (list.length > MAX_ENTRIES) list = list.sort((a, b) => b[1][1] - a[1][1]).slice(0, MAX_ENTRIES);
@@ -34,8 +39,8 @@ function clean(doc, now = Date.now()) {
 
 // Merge b into a (both clean). Returns { doc, changed }.
 function merge(a, b) {
-  const doc = { d: a.d, s: { ...a.s } };
-  let changed = false;
+  const doc = { d: a.d, s: { ...a.s }, x: Math.max(a.x, b.x) };
+  let changed = b.x > a.x;
   if (b.d && (!doc.d || b.d[1] > doc.d[1])) { doc.d = b.d; changed = true; }
   for (const [k, e] of Object.entries(b.s)) {
     const cur = doc.s[k];
