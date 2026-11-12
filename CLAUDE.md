@@ -19,7 +19,8 @@
   The merge rules exist twice (`content.js` `mergeInto`, `server/zoom/merge.js`): change both together.
   Deploy the server with `server/deploy.sh` (Azure: resource group `panezoom`, app `panezoom-sync`,
   storage `panezoomsync`, Southeast Asia). Test against throwaway account keys and delete their blobs.
-- **Release**: `./build.mjs --zip` makes `dist/pane-zoom-for-gmail-<version>.zip`. Every store field
+- **Release**: `./build.mjs --zip` makes `dist/pane-zoom-for-gmail-<version>.zip`; upload it on the store
+  item `egpapgddflnnnhokjchhinhokpgchmnf` (Package tab), then Submit for review. Every store field
   lives in `store/listing.md`; store images in `store/img/`. The store name must keep the form
   "… for Gmail" (Google trademark rules).
 - **Site and media**: `docs/` is the GitHub Pages site (main branch, `/docs`). All screenshots, store

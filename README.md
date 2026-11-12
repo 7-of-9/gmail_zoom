@@ -41,7 +41,7 @@ message, leaving the inbox list, sidebars and toolbars alone.
 
 ## Install
 
-- **Chrome Web Store**: submission in progress (listing copy in `store/listing.md`).
+- **Chrome Web Store**: https://chromewebstore.google.com/detail/egpapgddflnnnhokjchhinhokpgchmnf (in review; listing copy in `store/listing.md`).
 - **From source**: clone this repo, open `chrome://extensions`, turn on **Developer mode**, click
   **Load unpacked** and pick the repo folder, then reload Gmail. After pulling changes, click the
   reload arrow on the extension's card and reload Gmail.

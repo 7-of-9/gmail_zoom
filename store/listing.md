@@ -4,6 +4,13 @@ Source of truth for every field of the store submission. Images are in `store/im
 from the demo page by `tools/media.mjs`. The upload package is `dist/pane-zoom-for-gmail-<version>.zip`,
 made by `./build.mjs --zip`.
 
+## Item
+
+- Item ID `egpapgddflnnnhokjchhinhokpgchmnf`, listing https://chromewebstore.google.com/detail/egpapgddflnnnhokjchhinhokpgchmnf
+- 1.3.6 submitted 2026-11-12, publishes automatically when approved. Updates: upload a new
+  `./build.mjs --zip` package on the item's Package tab, then Submit for review.
+- The Test instructions tab has no credentials (Chrome autofill put some there once; clear them).
+
 ## Package
 
 - Upload: `dist/pane-zoom-for-gmail-<version>.zip` (manifest, background.js, content.js, content.css,
