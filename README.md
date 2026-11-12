@@ -22,8 +22,9 @@ sidebars and toolbars as they are.
   reading line a quarter of the way down the pane.
 - **Storage.** Settings live in `localStorage` (`gmailPaneZoom.v2` on mail.google.com), so they
   survive reloads, cover every Gmail account, and open tabs pick up changes live.
-- The control hides when no conversation is open. No permissions are requested; it runs only on
-  `https://mail.google.com/*`.
+- **Version.** Shown in the toolbar icon's right-click menu, its hover title and the % tooltip.
+- The control hides when no conversation is open. The page script runs only on
+  `https://mail.google.com/*`; the only permission is `contextMenus` (for the version item).
 
 ## Install
 
@@ -33,6 +34,12 @@ sidebars and toolbars as they are.
 4. Reload the Gmail tab.
 
 After pulling changes, click the reload arrow on the extension's card, then reload Gmail.
+
+## Build
+
+`./build.mjs` bumps the patch version (every build), re-renders the icons if the SVG changed, and,
+if a local CDP bridge is available (`~/.claude/tools/cdp.mjs` or `$CDP_BRIDGE`), reloads the extension
+in Chrome and reloads Gmail tabs that have no draft open. `./build.mjs --no-reload` only bumps.
 
 ## How it works
 

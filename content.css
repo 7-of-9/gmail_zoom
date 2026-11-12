@@ -17,9 +17,8 @@ h2.hP,
 .a3s.gpz-fit img[style*="width"] { height: auto !important; }
 .a3s.gpz-fit pre { white-space: pre-wrap !important; }
 
-/* Floating control. The outer bar is positioned by content.js at the pane's
-   top-left (unzoomed, so its left/top stay true); the inner row is scaled
-   inline to the focused message's zoom. */
+/* Floating control, positioned by content.js at the pane's top-left. Fixed
+   small size; faint until hovered. */
 #gpz-bar {
   position: fixed;
   z-index: 2147483000;
@@ -30,25 +29,28 @@ h2.hP,
 
 #gpz-row {
   display: flex;
-  gap: 3px;
+  gap: 2px;
+  opacity: 0.45;
+  transition: opacity 0.15s;
 }
+#gpz-row:hover { opacity: 1; }
 
 #gpz-row button {
   all: unset;
   box-sizing: border-box;
-  height: 28px;
-  min-width: 28px;
-  padding: 0 5px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 4px;
   display: grid;
   place-items: center;
-  border: 2px solid #6b21a8;            /* dark purple */
+  border: 1.5px solid #6b21a8;          /* dark purple */
   border-radius: 0;
-  background: rgba(216, 180, 254, 0.5); /* light mauve, 50% */
+  background: rgba(216, 180, 254, 0.5); /* light mauve */
   color: #4c1d95;
-  font: 700 18px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font: 700 16px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   cursor: pointer;
   transition: background 0.15s;
 }
 #gpz-row button:hover { background: rgba(216, 180, 254, 0.9); }
 #gpz-row button:disabled { opacity: 0.4; cursor: default; }
-#gpz-row button.gpz-pct { min-width: 50px; font-size: 12px; }
+#gpz-row button.gpz-pct { min-width: 42px; font-size: 11px; }

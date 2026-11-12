@@ -122,8 +122,11 @@
   const pct = button('', () => setFocusZoom(1), 'gpz-pct');
   const inn = button('+', () => step(1));
 
+  let version = '';
+  try { version = chrome.runtime.getManifest().version; } catch { /* extension reloaded */ }
+
   const row = document.createElement('div');
-  row.id = 'gpz-row';  // scaled to the focused message's zoom
+  row.id = 'gpz-row';
   row.append(out, pct, inn);
   const bar = document.createElement('div');
   bar.id = 'gpz-bar';  // positioned, never zoomed
@@ -156,12 +159,12 @@
     setText(pct, 'textContent', pctText(z));
     setText(pct, 'title', `${who}: ${pctText(z)}`
       + (got < z ? ` (shown at ${pctText(got)} so it fits the pane)` : '')
-      + '\nClick: back to 100%');
+      + '\nClick: back to 100%'
+      + `\nGmail Pane Zoom v${version}`);
     setText(out, 'title', `Zoom out ${who} (${mod}−)`);
     setText(inn, 'title', `Zoom in ${who} (${mod}+)`);
     out.disabled = z <= MIN;
     inn.disabled = z >= MAX;
-    setText(row.style, 'zoom', String(z));
   }
 
   // ---- placement ---------------------------------------------------------
