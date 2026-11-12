@@ -13,9 +13,10 @@ message, leaving the inbox list, sidebars and toolbars alone.
 - **Per-sender zoom.** The level is saved for the sender of the message you're reading, e.g.
   notifications at 110% and a newsletter at 140%. Senders you haven't set yet open at the last level
   you picked.
-- **Keyboard shortcuts.** `Cmd+Shift+=` / `Cmd+Shift+-` on Mac, `Ctrl+Shift+=` / `Ctrl+Shift+-`
-  elsewhere. While Gmail has focus they replace Chrome's whole-page zoom. Clicking the percentage sets
-  that sender back to 100%. `+` / `−` step 10%, from 50% to 300%.
+- **Chrome's zoom keys zoom the email.** While a conversation is open, `Cmd+=` / `Cmd+-` / `Cmd+0`
+  on Mac (`Ctrl` elsewhere; Shift optional) zoom the message instead of Chrome's whole page. On the
+  inbox list they stay Chrome's page zoom. Clicking the percentage also sets that sender back to 100%.
+  `+` / `−` step 10%, from 50% to 300%.
 - **Works on all your machines, no login.** The Gmail account you're in is the identity: levels sync
   to every machine where you open that account with the extension. Each Gmail account has its own
   levels.

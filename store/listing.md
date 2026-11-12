@@ -20,7 +20,7 @@ made by `./build.mjs --zip`.
 
 - **Name** (from the manifest): Pane Zoom for Gmail
 - **Summary** (from the manifest, 132 max): Zoom only the Gmail reading pane, remembered per sender and
-  synced across your machines. No login. Cmd/Ctrl+Shift+=/−.
+  synced across your machines. No login. Cmd/Ctrl +/− zoom the email.
 - **Category**: Productivity › Communication
 - **Language**: English (United States)
 - **Icon**: `icons/icon-128.png`
@@ -42,8 +42,9 @@ Chrome's zoom blows up everything: the inbox list, the sidebars, the toolbars. P
 • Per-sender zoom. Set notification mail to 110% and that tiny-font newsletter to 140%. Each sender
   opens at the level you picked last time; senders you haven't set yet open at your latest level.
 
-• Keyboard shortcuts. ⌘⇧+ / ⌘⇧− on Mac, Ctrl+Shift+= / Ctrl+Shift+− on Windows, Linux and ChromeOS.
-  Click the percentage to go back to 100%.
+• Chrome's zoom keys zoom the email. While a message is open, ⌘+ / ⌘− / ⌘0 on Mac (Ctrl++ /
+  Ctrl+− / Ctrl+0 on Windows, Linux and ChromeOS) zoom the message instead of the whole page. Click
+  the percentage to go back to 100%.
 
 • Works on all your machines, without logging in. Your Gmail account is the identity, so your zoom
   levels follow you to every computer where you open Gmail with the extension. No account, no
@@ -99,8 +100,8 @@ Gmail is a trademark of Google LLC. Pane Zoom is not affiliated with or endorsed
 
 ```text
 No account or login is needed. Open https://mail.google.com, open any conversation. A small
-− 100% + control appears at the top-left of the reading pane. Click + or press Cmd/Ctrl+Shift+= to
-zoom the open message; Cmd/Ctrl+Shift+− zooms out; clicking the percentage resets to 100%. Hover the
+− 100% + control appears at the top-left of the reading pane. Click + or press Cmd/Ctrl+= to
+zoom the open message; Cmd/Ctrl+− zooms out; Cmd/Ctrl+0 or clicking the percentage resets to 100%. Hover the
 control for the shortcuts. Open a message from another sender: it keeps its
 own level. The toolbar icon's right-click menu has the sync switch and the delete item.
 ```

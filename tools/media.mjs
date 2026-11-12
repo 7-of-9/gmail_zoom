@@ -92,7 +92,7 @@ const SHOTS = [
       { src: news.src, crop: crop(news), scale: pairScale(news), label: `The Weekly Byte · <b>${news.pct}</b>` },
       { src: hub.src, crop: crop(hub), scale: pairScale(hub), label: `CodeHub · <b>${hub.pct}</b>` },
     ] },
-  { title: 'Wide emails fit the pane', sub: '⌘⇧+ zooms in. Fixed-width Outlook tables and newsletters reflow instead of scrolling sideways.',
+  { title: 'Wide emails fit the pane', sub: '⌘+ zooms in. Fixed-width Outlook tables and newsletters reflow instead of scrolling sideways.',
     layout: 'single', panels: [{ src: fees.src }] },
   { title: 'Same zoom on all your machines', sub: 'No login: your Gmail account is the identity, and your levels sync automatically.',
     layout: 'devices', syncText: 'same Gmail account', panels: [

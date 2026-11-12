@@ -31,4 +31,20 @@ for (const z of [0.9, 1.3, 1.7, 3]) {
     rmSync(prof, { recursive: true, force: true });
   }
 }
+// Chrome's zoom keys (no Shift) zoom the pane instead of the page
+{
+  const prof = mkdtempSync(join(tmpdir(), 'gpz-keys-'));
+  try {
+    const dom = execFileSync(CHROME, ['--headless=new', `--user-data-dir=${prof}`, '--allow-file-access-from-files',
+      '--virtual-time-budget=4000', '--window-size=1000,1000', '--dump-dom', `file://${page}?z=1.3&keys=1`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const r = JSON.parse(dom.match(/KEYS (\{.*?\})<\/pre>/s)[1].replace(/&quot;/g, '"'));
+    const ok = r.plusPrevented && r.minusPrevented && r.zeroPrevented && r.before === '130%'
+      && r.afterPlus === '140%' && r.afterMinus === '130%' && r.afterZero === '100%' && r.tip === 3;
+    if (!ok) failed++;
+    console.log(`${ok ? 'ok  ' : 'FAIL'} keys ${JSON.stringify(r)}`);
+  } finally {
+    rmSync(prof, { recursive: true, force: true });
+  }
+}
 process.exit(failed ? 1 : 0);

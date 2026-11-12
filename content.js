@@ -6,7 +6,8 @@
 //   Senders you have not set yet use the last level you picked.
 // - Zoomed fixed-width HTML emails are reflowed to the pane width; anything
 //   that still won't fit is shrunk on its own (see fitBody).
-// - Shortcuts: Cmd+Shift+= / Cmd+Shift+- (Ctrl+Shift on Windows/Linux).
+// - Shortcuts: Cmd+= / Cmd+- / Cmd+0 (Ctrl on Windows/Linux), Shift optional.
+//   While a conversation is open they replace Chrome's page zoom on Gmail.
 //
 // DOM is built with createElement/textContent and styled via CSSOM only,
 // because Gmail enforces Trusted Types and a strict CSP.
@@ -351,8 +352,9 @@
   // ---- UI ----------------------------------------------------------------
   const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
   const mac = /mac/i.test(platform);
-  const KEY_IN = mac ? '⌘⇧+' : 'Ctrl+Shift+=';
-  const KEY_OUT = mac ? '⌘⇧−' : 'Ctrl+Shift+−';
+  const KEY_IN = mac ? '⌘+' : 'Ctrl++';
+  const KEY_OUT = mac ? '⌘−' : 'Ctrl+−';
+  const KEY_RESET = mac ? '⌘0' : 'Ctrl+0';
 
   const button = (text, onClick, cls, label) => {
     const b = document.createElement('button');
@@ -365,7 +367,7 @@
   };
 
   const out = button('−', () => step(-1), '', `Zoom out (${KEY_OUT})`);
-  const pct = button('', () => setFocusZoom(1), 'gpz-pct', 'Back to 100%');
+  const pct = button('', () => setFocusZoom(1), 'gpz-pct', `Back to 100% (${KEY_RESET})`);
   const inn = button('+', () => step(1), '', `Zoom in (${KEY_IN})`);
   const tip = document.createElement('div'); // instant hover help, see content.css
   tip.id = 'gpz-tip';
@@ -398,7 +400,7 @@
   const step = (d) => setFocusZoom(zoomFor(focus ? senderOf(focus) : '') + d * STEP);
 
   const setText = (el, prop, v) => { if (el[prop] !== v) el[prop] = v; };
-  tip.textContent = `${KEY_IN}  zoom in\n${KEY_OUT}  zoom out`; // hover help: shortcuts only
+  tip.textContent = `${KEY_IN}  zoom in\n${KEY_OUT}  zoom out\n${KEY_RESET}  100%`; // hover help: shortcuts only
 
   function render() {
     const z = zoomFor(focus ? senderOf(focus) : '');
@@ -465,16 +467,19 @@
     place(pane);
   }
 
-  // ---- shortcuts: Cmd/Ctrl + Shift + (= or +) / (- or _) -----------------
+  // ---- shortcuts: Chrome's zoom keys, Cmd/Ctrl + (= or +) / (- or _) / 0 ----
+  // Shift optional. Only while a conversation is open: on the inbox list
+  // there's no message to zoom, so Chrome's page zoom keeps working there.
   window.addEventListener('keydown', (e) => {
-    if (!e.shiftKey || e.altKey || !(e.metaKey || e.ctrlKey)) return;
-    let d = 0;
-    if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '+' || e.key === '=') d = 1;
-    else if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '_' || e.key === '-') d = -1;
-    if (!d) return;
+    if (e.altKey || !(e.metaKey || e.ctrlKey) || !focus) return;
+    let act = null;
+    if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '+' || e.key === '=') act = () => step(1);
+    else if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '_' || e.key === '-') act = () => step(-1);
+    else if (!e.shiftKey && (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0')) act = () => setFocusZoom(1);
+    if (!act) return;
     e.preventDefault();           // stop Chrome's whole-page zoom
     e.stopImmediatePropagation(); // and Gmail's own handlers
-    step(d);
+    act();
   }, true);
 
   tick();

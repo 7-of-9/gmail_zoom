@@ -60,7 +60,23 @@
 <link rel="stylesheet" href="../content.css">
 <script src="../content.js"></script>
 <script>
-  setTimeout(() => {
+  if (new URLSearchParams(location.search).get('keys')) {
+    // Chrome's zoom keys without Shift: ⌘= zooms the focused message, ⌘0 resets it
+    setTimeout(() => {
+      const press = (key, code) => {
+        const e = new KeyboardEvent('keydown', { key, code, metaKey: true, ctrlKey: false, bubbles: true, cancelable: true });
+        window.dispatchEvent(e);
+        return e.defaultPrevented;
+      };
+      const pct = () => document.querySelector('.gpz-pct').textContent;
+      const r = { before: pct() };
+      r.plusPrevented = press('=', 'Equal'); r.afterPlus = pct();
+      r.minusPrevented = press('-', 'Minus'); r.afterMinus = pct();
+      r.zeroPrevented = press('0', 'Digit0'); r.afterZero = pct();
+      r.tip = document.getElementById('gpz-tip').textContent.split('\n').length;
+      document.getElementById('out').textContent = 'KEYS ' + JSON.stringify(r);
+    }, 1500);
+  } else setTimeout(() => {
     const res = {};
     for (const id of ['b1', 'b2', 'b3', 'b4']) {
       const b = document.getElementById(id);
