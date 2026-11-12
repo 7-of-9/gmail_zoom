@@ -152,7 +152,6 @@
   });
 
   // ---- sync across machines (background.js talks to the server) -----------
-  let syncStatus = 'connecting'; // shown in the tooltip
   let syncTimer = 0;
   let lastSync = 0;
   const syncSoon = (ms) => { clearTimeout(syncTimer); syncTimer = setTimeout(sync, ms); };
@@ -164,9 +163,8 @@
     try {
       r = await chrome.runtime.sendMessage({ type: 'gpz-sync', acct: acctKey, doc: state });
     } catch { /* extension reloaded or updated: this page's script is orphaned */ }
-    if (r && r.off) { syncStatus = 'off'; return; }
-    if (!r || !r.doc) { syncStatus = 'error'; syncSoon(60000); return; }
-    syncStatus = 'on';
+    if (r && r.off) return;
+    if (!r || !r.doc) { syncSoon(60000); return; } // offline or server down: retry
     if (mergeInto(state, r.doc)) { save(); tick(); }
   }
   document.addEventListener('visibilitychange', () => {
@@ -372,8 +370,6 @@
   const tip = document.createElement('div'); // instant hover help, see content.css
   tip.id = 'gpz-tip';
 
-  let version = '';
-  try { version = chrome.runtime.getManifest().version; } catch { /* extension reloaded */ }
 
   const row = document.createElement('div');
   row.id = 'gpz-row';
@@ -402,26 +398,11 @@
   const step = (d) => setFocusZoom(zoomFor(focus ? senderOf(focus) : '') + d * STEP);
 
   const setText = (el, prop, v) => { if (el[prop] !== v) el[prop] = v; };
-  const SYNC_TEXT = {
-    connecting: 'sync: connecting…',
-    on: 'synced across machines for @',
-    off: 'sync off (toolbar icon menu)',
-    error: 'sync: server unreachable, retrying',
-  };
+  tip.textContent = `${KEY_IN}  zoom in\n${KEY_OUT}  zoom out`; // hover help: shortcuts only
 
   function render() {
-    const s = focus ? senderOf(focus) : '';
-    const z = zoomFor(s);
-    const shrunk = !!(focus && focus.querySelector('.gpz-shrunk'));
+    const z = zoomFor(focus ? senderOf(focus) : '');
     setText(pct, 'textContent', pctText(z));
-    setText(tip, 'textContent', [
-      `${s || 'this sender'}: ${pctText(z)}${shrunk ? ' (wide parts shrunk to fit)' : ''}`,
-      `${KEY_IN}   zoom in`,
-      `${KEY_OUT}   zoom out`,
-      'click %   back to 100%',
-      SYNC_TEXT[syncStatus].replace('@', acct || 'this account'),
-      `Pane Zoom for Gmail${version ? ` v${version}` : ''}`,
-    ].join('\n'));
     out.disabled = z <= MIN;
     inn.disabled = z >= MAX;
   }

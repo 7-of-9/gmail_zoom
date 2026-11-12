@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Pane Zoom for Gmail",
-  "version": "1.3.3",
+  "version": "1.3.5",
   "description": "Zoom only the Gmail reading pane, remembered per sender and synced across your machines. No login. Cmd/Ctrl+Shift+=/−.",
   "icons": {
     "16": "icons/icon-16.png",
