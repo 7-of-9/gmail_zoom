@@ -9,7 +9,7 @@ made by `./build.mjs --zip`.
 - Item ID `egpapgddflnnnhokjchhinhokpgchmnf`, listing https://chromewebstore.google.com/detail/egpapgddflnnnhokjchhinhokpgchmnf
 - 1.3.8 submitted 2026-11-12 (replaced 1.3.6 before review), publishes automatically when approved.
 - Next store update (after 1.3.8 is approved): upload the current package and re-paste the description
-  (it now mentions drafts following the zoom, added in 1.3.9). Updates: upload a new
+  (it now mentions drafts following the zoom, added in 1.3.9, and draft-only zoom keys, 1.3.10). Updates: upload a new
   `./build.mjs --zip` package on the item's Package tab, then Submit for review.
 - The Test instructions tab has no credentials (Chrome autofill put some there once; clear them).
 
@@ -48,8 +48,8 @@ Chrome's zoom blows up everything: the inbox list, the sidebars, the toolbars. P
   opens at the level you picked last time; senders you haven't set yet open at your latest level.
 
 • Chrome's zoom keys zoom the email. While a message is open, ⌘+ / ⌘− / ⌘0 on Mac (Ctrl++ /
-  Ctrl+− / Ctrl+0 on Windows, Linux and ChromeOS) zoom the message instead of the whole page. Click
-  the percentage to go back to 100%.
+  Ctrl+− / Ctrl+0 on Windows, Linux and ChromeOS) zoom the message instead of the whole page; with
+  only a draft open, they zoom just the draft. Click the percentage to go back to 100%.
 
 • Works on all your machines, without logging in. Your Gmail account is the identity, so your zoom
   levels follow you to every computer where you open Gmail with the extension. No account, no

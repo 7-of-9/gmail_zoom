@@ -54,4 +54,21 @@ for (const z of [0.9, 1.3, 1.7, 3]) {
     rmSync(prof, { recursive: true, force: true });
   }
 }
+// Compose window, no conversation: the keys zoom just the draft (own level,
+// starting from the default), and go back to Chrome once it's closed
+{
+  const prof = mkdtempSync(join(tmpdir(), 'gpz-compose-'));
+  try {
+    const dom = execFileSync(CHROME, ['--headless=new', `--user-data-dir=${prof}`, '--allow-file-access-from-files',
+      '--virtual-time-budget=5000', '--window-size=1000,1000', '--dump-dom', `file://${join(dirname(page), 'compose.html')}`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const r = JSON.parse(dom.match(/COMPOSE (\{.*?\})<\/pre>/s)[1].replace(/&quot;/g, '"'));
+    const ok = r.start === '1.2' && r.plus && r.afterPlus === '1.3' && r.afterPlus2 === '1.4' && r.minus
+      && r.afterMinus === '1.3' && r.zero && r.afterZero === '1' && r.editorStyleZoom === '' && !r.noDraftPrevented;
+    if (!ok) failed++;
+    console.log(`${ok ? 'ok  ' : 'FAIL'} compose ${JSON.stringify(r)}`);
+  } finally {
+    rmSync(prof, { recursive: true, force: true });
+  }
+}
 process.exit(failed ? 1 : 0);

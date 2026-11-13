@@ -282,15 +282,26 @@
   // Inline replies and compose windows (Gmail's editor, [g_editable]) follow
   // the open conversation: the newest message's zoom, scaled so the draft's
   // text is the same size on screen as that message's text. With no
-  // conversation open, the default level. The zoom goes on the editor's
-  // wrapper, never inside the editor, so nothing changes in the mail you send.
+  // conversation open they use their own level (COMPOSE, a pseudo-sender, so
+  // it syncs like the others; until set, the default level), which the
+  // shortcuts change there. The zoom goes on the editor's wrapper, never
+  // inside the editor, so nothing changes in the mail you send.
+  const COMPOSE = '(compose)';
+  const draftOpen = () => [...document.querySelectorAll('[g_editable="true"]')].some(shown);
+  function setComposeZoom(z) {
+    if (!acct) return;
+    state.s[senderKey(COMPOSE)] = [clamp(z), Date.now()];
+    save();
+    syncSoon(2000);
+    tick();
+  }
   function zoomDrafts(last) {
     for (const ed of document.querySelectorAll('[g_editable="true"]')) {
       const wrap = ed.parentElement;
       if (!wrap || !shown(ed)) continue;
       const own = parseFloat(getComputedStyle(ed).fontSize) || 13;
       const size = last ? evenText(last) || own : own;
-      const z = String(Math.round((last ? zoomFor(senderOf(last)) : defZoom()) * (size / own) * 100) / 100);
+      const z = String(Math.round((last ? zoomFor(senderOf(last)) : zoomFor(COMPOSE)) * (size / own) * 100) / 100);
       if (wrap.style.zoom !== z) wrap.style.zoom = z;
     }
   }
@@ -486,14 +497,20 @@
   }
 
   // ---- shortcuts: Chrome's zoom keys, Cmd/Ctrl + (= or +) / (- or _) / 0 ----
-  // Shift optional. Only while a conversation is open: on the inbox list
-  // there's no message to zoom, so Chrome's page zoom keeps working there.
+  // Shift optional. With a conversation open they zoom it (and its drafts);
+  // with only a compose/draft window open, just that draft. Otherwise (inbox
+  // list, nothing to zoom) Chrome's page zoom keeps working.
   window.addEventListener('keydown', (e) => {
-    if (e.altKey || !(e.metaKey || e.ctrlKey) || !focus) return;
+    if (e.altKey || !(e.metaKey || e.ctrlKey)) return;
+    const drafting = !focus && draftOpen();
+    if (!focus && !drafting) return;
+    const by = (d) => (drafting ? () => setComposeZoom(zoomFor(COMPOSE) + d * STEP) : () => step(d));
     let act = null;
-    if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '+' || e.key === '=') act = () => step(1);
-    else if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '_' || e.key === '-') act = () => step(-1);
-    else if (!e.shiftKey && (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0')) act = () => setFocusZoom(1);
+    if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '+' || e.key === '=') act = by(1);
+    else if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '_' || e.key === '-') act = by(-1);
+    else if (!e.shiftKey && (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0')) {
+      act = drafting ? () => setComposeZoom(1) : () => setFocusZoom(1);
+    }
     if (!act) return;
     e.preventDefault();           // stop Chrome's whole-page zoom
     e.stopImmediatePropagation(); // and Gmail's own handlers

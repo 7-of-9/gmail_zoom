@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- Drafts list with a compose window and no conversation open: Chrome's zoom
+     keys must zoom just the draft. Fake content only. Run: node test/fit.test.mjs -->
+<meta charset="utf-8">
+<title>Drafts - someone@example.com - Mail</title>
+<style>
+  body { margin: 0; font: 14px Arial, sans-serif; }
+  #compose { position: fixed; right: 20px; bottom: 0; width: 560px; height: 500px; overflow: auto; border: 1px solid #ccc; }
+</style>
+<script>
+  localStorage.setItem('gmailPaneZoom.v2', JSON.stringify({ def: 1.2, senders: {} }));
+</script>
+<div role="main"><table><tr class="zA"><td>Draft</td><td>Re: a draft in the list</td></tr></table></div>
+<div id="compose"><div class="aO7" id="wrap"><div g_editable="true" role="textbox" contenteditable="true" style="font-size:13px">Dear colleague, a draft being written in a compose window.</div></div></div>
+<pre id="out"></pre>
+<link rel="stylesheet" href="../content.css">
+<script src="../content.js"></script>
+<script>
+  setTimeout(() => {
+    const press = (key, code) => {
+      const e = new KeyboardEvent('keydown', { key, code, metaKey: true, bubbles: true, cancelable: true });
+      window.dispatchEvent(e);
+      return e.defaultPrevented;
+    };
+    const wrap = document.getElementById('wrap');
+    const r = { start: wrap.style.zoom };
+    r.plus = press('=', 'Equal'); r.afterPlus = wrap.style.zoom;
+    r.plus2 = press('=', 'Equal'); r.afterPlus2 = wrap.style.zoom;
+    r.minus = press('-', 'Minus'); r.afterMinus = wrap.style.zoom;
+    r.zero = press('0', 'Digit0'); r.afterZero = wrap.style.zoom;
+    r.barShown = !!document.querySelector('#gpz-bar.gpz-on');
+    r.editorStyleZoom = document.querySelector('[g_editable]').style.zoom;
+    // close the draft: keys go back to Chrome
+    document.getElementById('compose').remove();
+    setTimeout(() => {
+      r.noDraftPrevented = press('=', 'Equal');
+      document.getElementById('out').textContent = 'COMPOSE ' + JSON.stringify(r);
+    }, 400);
+  }, 1500);
+</script>
