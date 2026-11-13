@@ -1,13 +1,14 @@
 // Pane Zoom for Gmail: floating − / + at the top-left of the reading pane that
-// zoom only the open conversation (subject + message bodies).
+// zoom only the open conversation (subject + message bodies) and drafts.
 //
-// - Zoom is remembered per sender, per Gmail account, and synced across your
+// - One text size everywhere: every message's text, the subject and drafts are
+//   set to one base size (BASE), so all mail reads alike, then zoomed by one
+//   reading level. The level is per Gmail account and synced across your
 //   machines with no login: the Gmail account you're in is the identity.
-//   Senders you have not set yet use the last level you picked.
 // - Zoomed fixed-width HTML emails are reflowed to the pane width; anything
 //   that still won't fit is shrunk on its own (see fitBody).
 // - Shortcuts: Cmd+= / Cmd+- / Cmd+0 (Ctrl on Windows/Linux), Shift optional.
-//   While a conversation is open they replace Chrome's page zoom on Gmail.
+//   While a conversation or a draft is open they replace Chrome's page zoom.
 //
 // DOM is built with createElement/textContent and styled via CSSOM only,
 // because Gmail enforces Trusted Types and a strict CSP.
@@ -18,7 +19,8 @@
   const LOCAL = 'gmailPaneZoom.v3.';  // + account key: sync document, below
   const OLD = 'gmailPaneZoom.v2';     // before sync: {def, senders: {address: zoom}}
   const OLDER = 'gmailPaneZoom';      // v1: one global number
-  const VAR = '--gpz-zoom';           // default level, read by content.css
+  const VAR = '--gpz-zoom';           // the level, read by content.css
+  const BASE = 14;                    // px: every message's text, before zoom (Gmail's header text size)
   const MIN = 0.5;
   const MAX = 3;
   const STEP = 0.1;
@@ -85,17 +87,12 @@
   }
   let acct = '';    // Gmail address, lowercased; '' until known
   let acctKey = ''; // its hash: the sync id and the localStorage suffix
-  const senderKeys = new Map();
-  function senderKey(addr) {
-    let k = senderKeys.get(addr);
-    if (!k) senderKeys.set(addr, (k = b64url(sha256(`gpz1|${acct}|${addr}`).subarray(0, 16))));
-    return k;
-  }
 
-  // ---- settings: { d: [zoom, t], s: { senderKey: [zoom, t] }, x: t } -------
-  // d = level for senders not set yet, s = per sender, t = when it was set
-  // (ms). The newest t wins per entry when tabs or machines merge. x = when
-  // synced data was deleted (toolbar menu): anything set before it is dropped.
+  // ---- settings: { d: [zoom, t], s: { key: [zoom, t] }, x: t } -------------
+  // d = the reading level, t = when it was set (ms); the newest t wins when
+  // tabs or machines merge. s = per-sender levels from before one-size
+  // (1.4); only read once, to pick the first level. x = when synced data was
+  // deleted (toolbar menu): anything set before it is dropped.
   const valid = (e) => Array.isArray(e) && +e[0] >= MIN && +e[0] <= MAX && +e[1] >= 0;
   function mergeInto(doc, other) {
     let changed = false;
@@ -116,36 +113,44 @@
   const blank = () => ({ d: null, s: {}, x: 0 });
   const readJSON = (k) => { try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; } };
 
-  // Settings from before sync (one set for every account), stamped t=1 so a
-  // real change from any machine wins over them.
-  function legacy(withSenders) {
+  // Settings from before sync (one shared level), stamped t=1 so a real change
+  // from any machine wins over it.
+  function legacy() {
     const doc = blank();
     const o = readJSON(OLD);
-    if (o && typeof o === 'object') {
-      doc.d = [clamp(+o.def || 1), 1];
-      if (withSenders) {
-        for (const [addr, z] of Object.entries(o.senders || {})) if (+z) doc.s[senderKey(addr)] = [clamp(+z), 1];
-      }
-    } else if (parseFloat(readJSON(OLDER))) {
-      doc.d = [clamp(parseFloat(readJSON(OLDER))), 1];
-    }
+    const z = o && typeof o === 'object' ? +o.def : parseFloat(readJSON(OLDER));
+    if (z) doc.d = [clamp(z), 1];
     return doc;
+  }
+  // Coming from per-sender levels (before 1.4): unless the level was changed
+  // since, start it from their median, not from whichever sender was zoomed
+  // last. Then delete them: x = the newest one's time drops them here, on the
+  // server and on every machine as it syncs. Stamped just after, so the level
+  // survives, every machine picks the same value, and any later change wins.
+  // Nothing writes sender entries any more, so this runs once per account.
+  function fromSenders(doc) {
+    const es = Object.values(doc.s);
+    if (!es.length) return;
+    const newest = Math.max(...es.map((e) => e[1]));
+    if (!doc.d || doc.d[1] <= newest) {
+      const zs = es.map((e) => e[0]).sort((a, b) => a - b);
+      doc.d = [clamp(zs[(zs.length - 1) >> 1]), newest + 1];
+    }
+    doc.x = Math.max(doc.x, newest);
+    doc.s = {};
   }
   function load() {
     const doc = blank();
-    if (!mergeInto(doc, readJSON(LOCAL + acctKey))) mergeInto(doc, legacy(true));
+    if (!mergeInto(doc, readJSON(LOCAL + acctKey))) mergeInto(doc, legacy());
+    fromSenders(doc);
     return doc;
   }
-  let state = legacy(false); // until the account is known: old default only
+  let state = legacy(); // until the account is known
   const save = () => {
     if (!acctKey) return;
     try { localStorage.setItem(LOCAL + acctKey, JSON.stringify(state)); } catch { /* blocked: session only */ }
   };
-  const defZoom = () => (state.d ? state.d[0] : 1);
-  const zoomFor = (sender) => {
-    const e = sender && acct ? state.s[senderKey(sender)] : null;
-    return e ? e[0] : defZoom();
-  };
+  const level = () => (state.d ? state.d[0] : 1);
 
   // Another Gmail tab of this account changed the settings: follow.
   window.addEventListener('storage', (e) => {
@@ -196,112 +201,54 @@
     } catch { /* orphaned */ }
   }
 
-  // ---- which message, which sender ----------------------------------------
   const shown = (el) => el.getBoundingClientRect().width > 0;
   const firstShown = (sel) => {
     for (const el of document.querySelectorAll(sel)) if (shown(el)) return el;
     return null;
   };
 
-  // Sender = the .gD[email] in the nearest ancestor of the body that has one,
-  // i.e. this message's own header.
-  const senders = new WeakMap();
-  function senderOf(body) {
-    if (senders.has(body)) return senders.get(body);
-    for (let el = body.parentElement; el && el !== document.body; el = el.parentElement) {
-      const s = el.querySelector('.gD[email]');
-      if (s) {
-        const addr = (s.getAttribute('email') || '').trim().toLowerCase();
-        if (addr) senders.set(body, addr);
-        return addr;
-      }
-    }
-    return '';
-  }
-
-  // The message the control acts on: the body under a reading line a quarter
-  // of the way down the pane, else the next one below it, else the last.
-  function pickFocus(bodies, pane) {
-    if (!pane || !bodies.length) return bodies[0] || null;
-    const y = pane.top + pane.height / 4;
-    let below = null;
-    for (const b of bodies) {
-      const r = b.getBoundingClientRect();
-      if (r.top <= y && r.bottom >= y) return b;
-      if (r.top > y && !below) below = b;
-    }
-    return below || bodies[bodies.length - 1];
-  }
-
-  // ---- one text size per message -------------------------------------------
-  // Emails mix sizes (headings, 9pt signatures, list numbers in another font)
-  // and Gmail's subject is far bigger than any body text. Every visible piece
-  // of text in a body is set to the size most of that body's text already
-  // has; the subject gets the newest message's size (see tick). Zoom then
-  // scales one uniform size. Text under 4px is left alone: it's hidden on
-  // purpose (preview-text and spacer tricks).
-  const evened = new WeakMap(); // body -> { size, n: element count when done }
+  // ---- one text size everywhere --------------------------------------------
+  // Emails come in every size (13px Gmail, 16px Outlook and Hotmail, 9pt
+  // signatures, big headings) and Gmail's subject is far bigger than any of
+  // them. Every visible piece of text in every body is set to BASE (the
+  // subject and drafts too, see tick and zoomDrafts), so the reading level
+  // means the same on-screen size for all mail. Text under 4px is left alone:
+  // it's hidden on purpose (preview-text and spacer tricks).
+  const evened = new WeakMap(); // body -> element count when done
   const INVISIBLE = /[\s ͏​-‍⁠﻿]+/g;
 
   function evenText(body) {
     const n = body.getElementsByTagName('*').length; // cheap: changes only when Gmail adds content
-    const done = evened.get(body);
-    if (done && done.n === n) return done.size;
-    const chars = new Map(); // element -> visible characters directly inside it
+    if (evened.get(body) === n) return;
+    const els = new Set([body, ...body.querySelectorAll('li')]); // li: list numbers
     const tw = document.createTreeWalker(body, NodeFilter.SHOW_TEXT);
     for (let t = tw.nextNode(); t; t = tw.nextNode()) {
-      const len = t.data.replace(INVISIBLE, '').length;
-      if (len && t.parentElement) chars.set(t.parentElement, (chars.get(t.parentElement) || 0) + len);
+      if (t.parentElement && t.data.replace(INVISIBLE, '')) els.add(t.parentElement);
     }
-    const bySize = new Map();
-    const els = [];
-    for (const [el, len] of chars) {
-      const fs = parseFloat(getComputedStyle(el).fontSize);
-      if (!(fs >= 4)) continue;
-      els.push(el);
-      const k = Math.round(fs * 2) / 2;
-      bySize.set(k, (bySize.get(k) || 0) + len);
+    const px = `${BASE}px`;
+    for (const el of els) {
+      if (el.style.getPropertyValue('font-size') === px) continue;
+      if (!(parseFloat(getComputedStyle(el).fontSize) >= 4)) continue;
+      el.style.setProperty('font-size', px, 'important');
+      // a fixed line height made for smaller text would make lines overlap
+      const lh = parseFloat(getComputedStyle(el).lineHeight);
+      if (lh && lh < BASE * 1.15) el.style.setProperty('line-height', 'normal', 'important');
     }
-    let size = 0;
-    let most = 0;
-    for (const [k, len] of bySize) if (len > most) { most = len; size = k; }
-    if (size) {
-      const px = `${size}px`;
-      for (const el of [...els, ...body.querySelectorAll('li')]) {
-        if (el.style.getPropertyValue('font-size') !== px) el.style.setProperty('font-size', px, 'important');
-        // a fixed line height made for smaller text would make lines overlap
-        const lh = parseFloat(getComputedStyle(el).lineHeight);
-        if (lh && lh < size * 1.15) el.style.setProperty('line-height', 'normal', 'important');
-      }
-    }
-    evened.set(body, { size, n: body.getElementsByTagName('*').length });
-    return size;
+    evened.set(body, body.getElementsByTagName('*').length);
   }
 
   // ---- drafts: write at the size you read ---------------------------------
-  // Inline replies and compose windows (Gmail's editor, [g_editable]) follow
-  // the open conversation: the newest message's zoom, scaled so the draft's
-  // text is the same size on screen as that message's text. With no
-  // conversation open they use their own level (COMPOSE, a pseudo-sender, so
-  // it syncs like the others; until set, the default level), which the
-  // shortcuts change there. The zoom goes on the editor's wrapper, never
-  // inside the editor, so nothing changes in the mail you send.
-  const COMPOSE = '(compose)';
+  // Inline replies and compose windows (Gmail's editor, [g_editable]) are
+  // zoomed so their text is BASE at the reading level on screen, like the
+  // messages. The zoom goes on the editor's wrapper, never inside the editor,
+  // so nothing changes in the mail you send.
   const draftOpen = () => [...document.querySelectorAll('[g_editable="true"]')].some(shown);
-  function setComposeZoom(z) {
-    if (!acct) return;
-    state.s[senderKey(COMPOSE)] = [clamp(z), Date.now()];
-    save();
-    syncSoon(2000);
-    tick();
-  }
-  function zoomDrafts(last) {
+  function zoomDrafts() {
     for (const ed of document.querySelectorAll('[g_editable="true"]')) {
       const wrap = ed.parentElement;
       if (!wrap || !shown(ed)) continue;
       const own = parseFloat(getComputedStyle(ed).fontSize) || 13;
-      const size = last ? evenText(last) || own : own;
-      const z = String(Math.round((last ? zoomFor(senderOf(last)) : zoomFor(COMPOSE)) * (size / own) * 100) / 100);
+      const z = String(Math.round(level() * (BASE / own) * 100) / 100);
       if (wrap.style.zoom !== z) wrap.style.zoom = z;
     }
   }
@@ -395,7 +342,7 @@
   };
 
   const out = button('−', () => step(-1), '', `Zoom out (${KEY_OUT})`);
-  const pct = button('', () => setFocusZoom(1), 'gpz-pct', `Back to 100% (${KEY_RESET})`);
+  const pct = button('', () => setLevel(1), 'gpz-pct', `Back to 100% (${KEY_RESET})`);
   const inn = button('+', () => step(1), '', `Zoom in (${KEY_IN})`);
   const tip = document.createElement('div'); // instant hover help, see content.css
   tip.id = 'gpz-tip';
@@ -413,25 +360,21 @@
     bar.addEventListener(t, (e) => { e.stopPropagation(); if (t === 'mousedown') e.preventDefault(); });
   }
 
-  let focus = null;
+  let reading = false; // a conversation is open
 
-  function setFocusZoom(z) {
-    z = clamp(z);
-    const s = focus ? senderOf(focus) : '';
-    const t = Date.now();
-    if (s && acct) state.s[senderKey(s)] = [z, t];
-    state.d = [z, t]; // senders not set yet follow your latest choice
+  function setLevel(z) {
+    state.d = [clamp(z), Date.now()];
     save();
     syncSoon(2000);
     tick();
   }
-  const step = (d) => setFocusZoom(zoomFor(focus ? senderOf(focus) : '') + d * STEP);
+  const step = (d) => setLevel(level() + d * STEP);
 
   const setText = (el, prop, v) => { if (el[prop] !== v) el[prop] = v; };
   tip.textContent = `${KEY_IN}  zoom in\n${KEY_OUT}  zoom out\n${KEY_RESET}  100%`; // hover help: shortcuts only
 
   function render() {
-    const z = zoomFor(focus ? senderOf(focus) : '');
+    const z = level();
     setText(pct, 'textContent', pctText(z));
     out.disabled = z <= MIN;
     inn.disabled = z >= MAX;
@@ -468,49 +411,42 @@
   function tick() {
     if (!bar.isConnected && document.body) document.body.append(bar);
     findAccount();
-    if (document.documentElement.style.getPropertyValue(VAR) !== String(defZoom())) {
-      document.documentElement.style.setProperty(VAR, String(defZoom()));
+    const z = level();
+    if (document.documentElement.style.getPropertyValue(VAR) !== String(z)) {
+      document.documentElement.style.setProperty(VAR, String(z));
     }
 
     const bodies = [...document.querySelectorAll('.a3s')].filter(shown);
-    for (const b of bodies) { evenText(b); fitBody(b, zoomFor(senderOf(b))); }
+    for (const b of bodies) { evenText(b); fitBody(b, z); }
 
-    // The subject follows the newest open message: its sender's zoom and its
-    // text size, so title and body read at the same size.
+    // The subject: same size and level as the message text.
     const subject = firstShown('h2.hP');
     if (subject) {
-      const last = bodies[bodies.length - 1];
-      const z = String(last ? zoomFor(senderOf(last)) : defZoom());
-      if (subject.style.zoom !== z) subject.style.zoom = z;
-      const size = last ? evenText(last) : 0;
-      if (size && subject.style.getPropertyValue('font-size') !== `${size}px`) {
-        subject.style.setProperty('font-size', `${size}px`, 'important');
+      if (subject.style.zoom !== String(z)) subject.style.zoom = String(z);
+      if (subject.style.getPropertyValue('font-size') !== `${BASE}px`) {
+        subject.style.setProperty('font-size', `${BASE}px`, 'important');
         subject.style.setProperty('line-height', 'normal', 'important');
       }
     }
-    zoomDrafts(bodies[bodies.length - 1]);
+    zoomDrafts();
 
     const pane = paneRect(subject || bodies[0]);
-    focus = pickFocus(bodies, pane);
+    reading = bodies.length > 0;
     render();
     place(pane);
   }
 
   // ---- shortcuts: Chrome's zoom keys, Cmd/Ctrl + (= or +) / (- or _) / 0 ----
-  // Shift optional. With a conversation open they zoom it (and its drafts);
-  // with only a compose/draft window open, just that draft. Otherwise (inbox
-  // list, nothing to zoom) Chrome's page zoom keeps working.
+  // Shift optional. With a conversation or a draft open they change the
+  // reading level (messages, subject and drafts, never Gmail's own UI).
+  // Otherwise (inbox list, nothing to zoom) Chrome's page zoom keeps working.
   window.addEventListener('keydown', (e) => {
     if (e.altKey || !(e.metaKey || e.ctrlKey)) return;
-    const drafting = !focus && draftOpen();
-    if (!focus && !drafting) return;
-    const by = (d) => (drafting ? () => setComposeZoom(zoomFor(COMPOSE) + d * STEP) : () => step(d));
+    if (!reading && !draftOpen()) return;
     let act = null;
-    if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '+' || e.key === '=') act = by(1);
-    else if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '_' || e.key === '-') act = by(-1);
-    else if (!e.shiftKey && (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0')) {
-      act = drafting ? () => setComposeZoom(1) : () => setFocusZoom(1);
-    }
+    if (e.code === 'Equal' || e.code === 'NumpadAdd' || e.key === '+' || e.key === '=') act = () => step(1);
+    else if (e.code === 'Minus' || e.code === 'NumpadSubtract' || e.key === '_' || e.key === '-') act = () => step(-1);
+    else if (!e.shiftKey && (e.code === 'Digit0' || e.code === 'Numpad0' || e.key === '0')) act = () => setLevel(1);
     if (!act) return;
     e.preventDefault();           // stop Chrome's whole-page zoom
     e.stopImmediatePropagation(); // and Gmail's own handlers

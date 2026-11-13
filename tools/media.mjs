@@ -34,21 +34,16 @@ console.log(`demo: extension v${version} copied to docs/demo/ext/`);
 if (args.has('--demo-only')) process.exit(0);
 
 // ---- 2. captures of the demo ------------------------------------------------
-const SENDER = {
-  news: 'digest@weeklybyte.example.org',
-  hub: 'notifications@codehub.example.com',
-  sam: 'sam.rivera@northwind.example.com',
-  fees: 'alex.morgan@fabrikam.example.com',
-};
-const preset = (def, levels) => JSON.stringify({ def, senders: Object.fromEntries(Object.entries(levels).map(([k, z]) => [SENDER[k], z])) });
+// One reading level for all mail (1.4+): the demo starts at `def`.
+const preset = (def) => JSON.stringify({ def, senders: {} });
 const demoUrl = (q) => `file://${at('docs/demo/index.html')}?media&${new URLSearchParams(q)}`;
 const tmp = mkdtempSync(join(tmpdir(), 'gpz-shots-'));
 const chrome = await launch();
 
-// Open the demo with these levels, optionally press keys / hover, capture.
-async function capture(name, { open, def = 1, levels = {}, w = 1280, h = 800, scale = 2, keys = 0, hover = false, list }) {
+// Open the demo at this level, optionally press keys / hover, capture.
+async function capture(name, { open, def = 1, w = 1280, h = 800, scale = 2, keys = 0, hover = false, list }) {
   const p = await chrome.page(w, h, scale);
-  await p.goto(demoUrl({ open, preset: preset(def, levels), ...(hover ? { video: 1 } : {}), ...(list ? { w: list } : {}) }), 1200);
+  await p.goto(demoUrl({ open, preset: preset(def), ...(hover ? { video: 1 } : {}), ...(list ? { w: list } : {}) }), 1200);
   for (let i = 0; i < Math.abs(keys); i++) { await p.zoomKey(Math.sign(keys)); await sleep(120); }
   if (keys) await sleep(300);
   if (hover) {
@@ -67,13 +62,12 @@ async function capture(name, { open, def = 1, levels = {}, w = 1280, h = 800, sc
   return { src: `file://${file}`, pane, pct };
 }
 
-const LEVELS = { news: 1.5, hub: 1.1, sam: 1.3 };
-const newsHover = await capture('news-hover', { open: 'news', levels: LEVELS, hover: true });
-const news = await capture('news', { open: 'news', levels: LEVELS });
-const hub = await capture('hub', { open: 'hub', levels: LEVELS });
-const fees = await capture('fees', { open: 'fees', def: 1.6, levels: { ...LEVELS, fees: 1.6 }, keys: 1 });
-const lap = await capture('laptop', { open: 'sam', levels: LEVELS });
-const desk = await capture('desktop', { open: 'sam', levels: LEVELS, w: 1440, h: 900, list: 400 });
+const newsHover = await capture('news-hover', { open: 'news', def: 1.5, hover: true });
+const news = await capture('news', { open: 'news', def: 1.3 });
+const hub = await capture('hub', { open: 'hub', def: 1.3 });
+const fees = await capture('fees', { open: 'fees', def: 1.6, keys: 1 });
+const lap = await capture('laptop', { open: 'sam', def: 1.3 });
+const desk = await capture('desktop', { open: 'sam', def: 1.3, w: 1440, h: 900, list: 400 });
 
 // ---- 3. store screenshots, promo tile, marquee -----------------------------
 async function render(template, cfg, file, w, h, scale = 1) {
@@ -87,14 +81,14 @@ const pairScale = (c) => 560 / c.pane.h;
 const SHOTS = [
   { title: 'Zoom the email, not the whole of Gmail', sub: 'A small − % + control sits on the reading pane. Hover it for the shortcuts.',
     layout: 'single', panels: [{ src: newsHover.src }] },
-  { title: 'Every sender keeps its own zoom', sub: 'Set it once: big for tiny-font newsletters, normal for notifications.',
+  { title: 'One text size for all your mail', sub: 'A newsletter and a notification email, evened out to the same size at the same level.',
     layout: 'pair', panels: [
       { src: news.src, crop: crop(news), scale: pairScale(news), label: `The Weekly Byte · <b>${news.pct}</b>` },
       { src: hub.src, crop: crop(hub), scale: pairScale(hub), label: `CodeHub · <b>${hub.pct}</b>` },
     ] },
   { title: 'Wide emails fit the pane', sub: '⌘+ zooms in. Fixed-width Outlook tables and newsletters reflow instead of scrolling sideways.',
     layout: 'single', panels: [{ src: fees.src }] },
-  { title: 'Same zoom on all your machines', sub: 'No login: your Gmail account is the identity, and your levels sync automatically.',
+  { title: 'Same zoom on all your machines', sub: 'No login: your Gmail account is the identity, and your level syncs automatically.',
     layout: 'devices', syncText: 'same Gmail account', panels: [
       { src: lap.src, label: `Laptop · <b>${lap.pct}</b>` },
       { src: desk.src, label: `Desktop · <b>${desk.pct}</b>` },
@@ -121,7 +115,7 @@ if (!args.has('--no-video')) {
   mkdirSync(frames);
   const list = [];
   const p = await chrome.page(1280, 800, 1);
-  await p.goto(demoUrl({ open: 'news', video: 1, preset: preset(1, { hub: 1.1, sam: 1.3 }) }), 1200);
+  await p.goto(demoUrl({ open: 'news', video: 1, preset: preset(1) }), 1200);
   let cur = { x: 900, y: 520 };
   await p.eval(`demo.cursor(${cur.x}, ${cur.y})`);
   const snap = async (hold) => {
@@ -150,9 +144,8 @@ if (!args.has('--no-video')) {
   for (let i = 0; i < 4; i++) await press(1, 0.42);
   await press(1, 0.9);                      // 150%
   await sleep(1300); await snap(0.6);       // badge gone
-  await openRow('hub'); await snap(1.6);    // its own 110%
-  await openRow('news'); await snap(1.4);   // remembered 150%
-  await openRow('fees'); await snap(0.8);   // unset: last level picked
+  await openRow('hub'); await snap(1.6);    // another sender: same size, same 150%
+  await openRow('fees'); await snap(1.0);   // Outlook-style email: same again
   await press(1, 0.45);
   await press(1, 1.0);                      // 170%, wide table fits
   await sleep(1300); await snap(1.6);

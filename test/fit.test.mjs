@@ -26,11 +26,11 @@ for (const z of [0.9, 1.3, 1.7, 3]) {
     const draftOk = parseFloat(dr.wrapZoom) === want && dr.editorStyleZoom === '';
     if (!draftOk) failed++;
     console.log(`${draftOk ? 'ok  ' : 'FAIL'} z=${z} draft ${JSON.stringify({ ...dr, want })}`);
-    const subjOk = parseFloat(subj.zoom) === z && subj.size === subj.newestBody;
+    const subjOk = parseFloat(subj.zoom) === z && subj.size === '14px';
     if (!subjOk) failed++;
     console.log(`${subjOk ? 'ok  ' : 'FAIL'} z=${z} subject ${JSON.stringify(subj)}`);
     for (const [id, r] of Object.entries(res)) {
-      const ok = parseFloat(r.zoom) === z && (z <= 1 || r.overflowPx <= 1) && r.sizes.length === 1;
+      const ok = parseFloat(r.zoom) === z && (z <= 1 || r.overflowPx <= 1) && r.sizes.join() === '14px';
       if (!ok) failed++;
       console.log(`${ok ? 'ok  ' : 'FAIL'} z=${z} ${id} ${JSON.stringify(r)}`);
     }
@@ -54,8 +54,8 @@ for (const z of [0.9, 1.3, 1.7, 3]) {
     rmSync(prof, { recursive: true, force: true });
   }
 }
-// Compose window, no conversation: the keys zoom just the draft (own level,
-// starting from the default), and go back to Chrome once it's closed
+// Compose window, no conversation: the keys change the level for the draft,
+// and go back to Chrome once it's closed
 {
   const prof = mkdtempSync(join(tmpdir(), 'gpz-compose-'));
   try {
@@ -63,10 +63,26 @@ for (const z of [0.9, 1.3, 1.7, 3]) {
       '--virtual-time-budget=5000', '--window-size=1000,1000', '--dump-dom', `file://${join(dirname(page), 'compose.html')}`],
     { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     const r = JSON.parse(dom.match(/COMPOSE (\{.*?\})<\/pre>/s)[1].replace(/&quot;/g, '"'));
-    const ok = r.start === '1.2' && r.plus && r.afterPlus === '1.3' && r.afterPlus2 === '1.4' && r.minus
-      && r.afterMinus === '1.3' && r.zero && r.afterZero === '1' && r.editorStyleZoom === '' && !r.noDraftPrevented;
+    // wrapper zoom = level x 14px base / 13px editor text
+    const ok = r.start === '1.29' && r.plus && r.afterPlus === '1.4' && r.afterPlus2 === '1.51' && r.minus
+      && r.afterMinus === '1.4' && r.zero && r.afterZero === '1.08' && r.editorStyleZoom === '' && !r.noDraftPrevented;
     if (!ok) failed++;
     console.log(`${ok ? 'ok  ' : 'FAIL'} compose ${JSON.stringify(r)}`);
+  } finally {
+    rmSync(prof, { recursive: true, force: true });
+  }
+}
+// Upgrade from per-sender levels: median becomes the level, senders deleted
+{
+  const prof = mkdtempSync(join(tmpdir(), 'gpz-migrate-'));
+  try {
+    const dom = execFileSync(CHROME, ['--headless=new', `--user-data-dir=${prof}`, '--allow-file-access-from-files',
+      '--virtual-time-budget=4000', '--dump-dom', `file://${join(dirname(page), 'migrate.html')}`],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    const r = JSON.parse(dom.match(/MIGRATE (\{.*?\})<\/pre>/s)[1].replace(/&quot;/g, '"'));
+    const ok = r.pct === '100%' && r.doc.d[0] === 1 && r.doc.d[1] === 3001 && r.doc.x === 3000 && !Object.keys(r.doc.s).length;
+    if (!ok) failed++;
+    console.log(`${ok ? 'ok  ' : 'FAIL'} migrate ${JSON.stringify(r)}`);
   } finally {
     rmSync(prof, { recursive: true, force: true });
   }

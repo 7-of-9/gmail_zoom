@@ -1,0 +1,24 @@
+<!doctype html>
+<!-- Upgrade from per-sender levels: the level starts at their median and the
+     sender entries are deleted (x set). Fake data only. Run: node test/fit.test.mjs -->
+<meta charset="utf-8">
+<title>Inbox - someone@example.com - Mail</title>
+<pre id="out"></pre>
+<link rel="stylesheet" href="../content.css">
+<script>
+  (async () => {
+    const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('gpz1|someone@example.com')));
+    const key = btoa(String.fromCharCode(...h)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const k = (c) => c.repeat(22);
+    localStorage.setItem('gmailPaneZoom.v3.' + key, JSON.stringify({
+      d: [0.7, 3000], x: 0, s: { [k('a')]: [1, 1000], [k('b')]: [1.5, 2000], [k('c')]: [0.7, 3000] },
+    }));
+    const s = document.createElement('script');
+    s.src = '../content.js';
+    s.onload = () => setTimeout(() => {
+      const doc = JSON.parse(localStorage.getItem('gmailPaneZoom.v3.' + key));
+      document.getElementById('out').textContent = 'MIGRATE ' + JSON.stringify({ doc, pct: document.querySelector('.gpz-pct').textContent });
+    }, 800);
+    document.body.append(s);
+  })();
+</script>

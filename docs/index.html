@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pane Zoom for Gmail</title>
-<meta name="description" content="A Chrome extension that zooms only the email you're reading in Gmail, remembers the level per sender, and syncs it across your machines without a login.">
+<meta name="description" content="A Chrome extension that zooms only the email you're reading in Gmail, evens every message out to one text size, and syncs your level across your machines without a login.">
 <meta property="og:title" content="Pane Zoom for Gmail">
-<meta property="og:description" content="Zoom the email, not the whole of Gmail. Per-sender zoom, keyboard shortcuts, synced across your machines with no login.">
+<meta property="og:description" content="Zoom the email, not the whole of Gmail. One text size for all mail, Chrome's zoom keys, synced across your machines with no login.">
 <meta property="og:image" content="https://7-of-9.github.io/gmail_zoom/img/screenshot-1.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/svg+xml" href="img/icon.svg">
@@ -98,14 +98,14 @@
       <h1>Pane Zoom for Gmail</h1>
     </div>
     <p class="pitch">Zoom the email, not the whole of Gmail.</p>
-    <p class="lede">A small Chrome extension that puts a <kbd>−</kbd> <kbd>%</kbd> <kbd>+</kbd> control on Gmail's reading pane. It enlarges just the message you're reading, remembers the level for each sender, and brings it to every machine you use Gmail on. No login.</p>
+    <p class="lede">A small Chrome extension that puts a <kbd>−</kbd> <kbd>%</kbd> <kbd>+</kbd> control on Gmail's reading pane. It enlarges just the message you're reading, evens every email out to one text size, and brings your level to every machine you use Gmail on. No login.</p>
     <div class="ctas">
       <a class="btn primary" href="https://chromewebstore.google.com/detail/egpapgddflnnnhokjchhinhokpgchmnf">Chrome Web Store <small>(in review)</small></a>
       <a class="btn ghost" href="demo/">Try the live demo</a>
       <a class="btn ghost" href="https://github.com/7-of-9/gmail_zoom">Source on GitHub</a>
     </div>
     <div class="video">
-      <video src="img/demo.mp4" poster="img/demo-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Demo: zooming a newsletter with Cmd+Plus, switching senders, and a wide table fitting the pane"></video>
+      <video src="img/demo.mp4" poster="img/demo-poster.jpg" autoplay muted loop playsinline preload="metadata" aria-label="Demo: zooming a newsletter with Cmd+Plus, other emails opening at the same size, and a wide table fitting the pane"></video>
     </div>
   </div>
 </header>
@@ -117,7 +117,7 @@
       <div class="why">
         <div><h3>Chrome's zoom is all or nothing</h3><p>⌘+ blows up the whole Gmail window: inbox, sidebars, toolbars. You wanted bigger text in one email.</p></div>
         <div><h3>Some mail is just small</h3><p>Newsletters set in 12px, dense notification threads, receipts with 10px fine print. Squinting isn't a workflow.</p></div>
-        <div><h3>Every sender is different</h3><p>The newsletter you read closely wants 150%; notifications are fine at 110%. Set each once and forget it.</p></div>
+        <div><h3>Every email is a different size</h3><p>Hotmail sends 16px, Gmail 13px, newsletters 12px with giant headings. Reading one thread shouldn't mean refocusing at every message.</p></div>
       </div>
     </div>
   </section>
@@ -128,8 +128,8 @@
       <div class="features">
         <div class="feature">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg></div>
-          <h3>Per-sender zoom, remembered</h3>
-          <p>The level sticks to whoever sent the message. Senders you haven't set yet open at the last level you picked.</p>
+          <h3>One text size for all mail</h3>
+          <p>Every message, every sender and the subject line are set to one size, then zoomed to your level. A Hotmail reply and a Gmail one read exactly the same.</p>
         </div>
         <div class="feature">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 15h10"/></svg></div>
@@ -139,7 +139,7 @@
         <div class="feature">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 8a8 8 0 0 0-14.5-2.5L4 7"/><path d="M4 3v4h4"/><path d="M4 16a8 8 0 0 0 14.5 2.5L20 17"/><path d="M20 21v-4h-4"/></svg></div>
           <h3>All your machines, no login</h3>
-          <p>Your Gmail account is the identity. Install it on your laptop and your desktop and the levels follow you automatically.</p>
+          <p>Your Gmail account is the identity. Install it on your laptop and your desktop and your level follows you automatically.</p>
         </div>
         <div class="feature">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h18M7 8l-4 4 4 4M17 8l4 4-4 4"/></svg></div>
@@ -148,8 +148,8 @@
         </div>
         <div class="feature">
           <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h16v2M9 19h6M12 5v14"/></svg></div>
-          <h3>One text size</h3>
-          <p>Headings, small print and the subject line are evened out, so the message reads at one size. Your reply draft follows too: you write at the size you read.</p>
+          <h3>Write at the size you read</h3>
+          <p>Reply drafts and compose windows follow your level too. Only the display changes: the mail you send is untouched.</p>
         </div>
       </div>
     </div>
@@ -160,7 +160,7 @@
       <h2>Screenshots</h2>
       <div class="shots">
         <a href="img/screenshot-1@2x.jpg"><img src="img/screenshot-1.png" srcset="img/screenshot-1.png 1x, img/screenshot-1@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="A newsletter zoomed to 150% in the reading pane, with the zoom control and its shortcut tooltip"></a>
-        <a href="img/screenshot-2@2x.jpg"><img src="img/screenshot-2.png" srcset="img/screenshot-2.png 1x, img/screenshot-2@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="Two senders side by side: a newsletter at 150% and code notifications at 110%"></a>
+        <a href="img/screenshot-2@2x.jpg"><img src="img/screenshot-2.png" srcset="img/screenshot-2.png 1x, img/screenshot-2@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="Two different emails side by side, a newsletter and code notifications, at the same level and the same text size"></a>
         <a href="img/screenshot-3@2x.jpg"><img src="img/screenshot-3.png" srcset="img/screenshot-3.png 1x, img/screenshot-3@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="An Outlook-style email with a wide table fitting the pane at 170%"></a>
         <a href="img/screenshot-4@2x.jpg"><img src="img/screenshot-4.png" srcset="img/screenshot-4.png 1x, img/screenshot-4@2x.jpg 2x" width="1280" height="800" loading="lazy" alt="A laptop and a desktop showing the same message at the same 130% zoom"></a>
       </div>
@@ -196,11 +196,11 @@
       <h2>Privacy, plainly</h2>
       <div class="cols">
         <div>
-          <p>The extension runs only on <code>mail.google.com</code>. It reads the sender's address from the header of the email you have open, to pick the zoom, and your Gmail address from the tab title, to know whose settings these are. It never reads or sends message content.</p>
-          <p>To sync, it sends a small Azure server only <b>one-way SHA-256 hashes</b> of your Gmail address and of sender addresses, plus zoom numbers and timestamps. No names, no addresses, no mail content, no analytics, no ads.</p>
+          <p>The extension runs only on <code>mail.google.com</code>. It reads your Gmail address from the tab title, to know whose setting this is, and changes how message text is displayed. It never reads, stores or sends message content, and it doesn't look at who emails you.</p>
+          <p>To sync, it sends a small Azure server only a <b>one-way SHA-256 hash</b> of your Gmail address, your zoom level and when you set it. No names, no addresses, no mail content, no analytics, no ads.</p>
         </div>
         <div>
-          <p><b>The trade-off of no login:</b> someone who already knows your Gmail address could check whether you've zoomed a sender they guess, or change your levels. They can't list who emails you or read any mail.</p>
+          <p><b>The trade-off of no login:</b> someone who already knows your Gmail address could see or change your zoom level. That's all there is to see: no senders, no mail.</p>
           <p>Right-click the toolbar icon to switch off <b>Sync zoom levels across machines</b>, or to <b>Delete synced zoom levels (all machines)</b>.</p>
           <p><a href="privacy.html">Full privacy policy →</a></p>
         </div>
@@ -211,9 +211,9 @@
   <section style="background: var(--bg2)">
     <div class="wrap">
       <h2>FAQ</h2>
-      <details><summary>Does it read my email?</summary><p>No. It reads only the sender's address in the header of the open message, to pick the zoom, and it hashes that address before anything leaves your browser. Message text never leaves your browser.</p></details>
+      <details><summary>Does it read my email?</summary><p>No. It only changes how the open message is displayed (text size and zoom). The one thing it reads is your Gmail address from the tab title, and that's hashed before anything leaves your browser.</p></details>
       <details><summary>Do I need an account or a login?</summary><p>No. The Gmail account you're signed in to is the identity, so the same settings appear on every machine where you install the extension and open that Gmail account.</p></details>
-      <details><summary>Does it work with several Gmail accounts?</summary><p>Yes. Each account has its own settings, and each syncs on its own.</p></details>
+      <details><summary>Does it work with several Gmail accounts?</summary><p>Yes. Each account has its own level, and each syncs on its own.</p></details>
       <details><summary>Google Workspace accounts?</summary><p>Yes, including Workspace accounts with a custom-branded Gmail.</p></details>
       <details><summary>Can I turn sync off?</summary><p>Yes. Right-click the toolbar icon and untick “Sync zoom levels across machines”. Your levels then stay in this browser only.</p></details>
       <details><summary>What does it cost?</summary><p>Nothing. It's free and open source under the MIT license.</p></details>
