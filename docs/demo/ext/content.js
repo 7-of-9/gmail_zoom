@@ -278,6 +278,23 @@
     return size;
   }
 
+  // ---- drafts: write at the size you read ---------------------------------
+  // Inline replies and compose windows (Gmail's editor, [g_editable]) follow
+  // the open conversation: the newest message's zoom, scaled so the draft's
+  // text is the same size on screen as that message's text. With no
+  // conversation open, the default level. The zoom goes on the editor's
+  // wrapper, never inside the editor, so nothing changes in the mail you send.
+  function zoomDrafts(last) {
+    for (const ed of document.querySelectorAll('[g_editable="true"]')) {
+      const wrap = ed.parentElement;
+      if (!wrap || !shown(ed)) continue;
+      const own = parseFloat(getComputedStyle(ed).fontSize) || 13;
+      const size = last ? evenText(last) || own : own;
+      const z = String(Math.round((last ? zoomFor(senderOf(last)) : defZoom()) * (size / own) * 100) / 100);
+      if (wrap.style.zoom !== z) wrap.style.zoom = z;
+    }
+  }
+
   // ---- zoom one body, keeping it inside the pane --------------------------
   // The body always gets the zoom asked for; the text is what you want bigger.
   // When zoomed in, anything that won't fit the pane is dealt with in steps,
@@ -460,6 +477,7 @@
         subject.style.setProperty('line-height', 'normal', 'important');
       }
     }
+    zoomDrafts(bodies[bodies.length - 1]);
 
     const pane = paneRect(subject || bodies[0]);
     focus = pickFocus(bodies, pane);
