@@ -55,6 +55,7 @@
     <span class="gD" email="plain@example.com">Plain Sender</span>
     <div class="a3s" id="b3"><p>Short plain message that fits at any zoom.</p></div>
   </div>
+  <div class="reply" id="reply"><div class="aO7" id="draftWrap"><div g_editable="true" role="textbox" contenteditable="true" style="font-size:13px;font-family:Arial">Draft reply text that should read at the conversation's size.</div></div></div>
 </div>
 <pre id="out"></pre>
 <link rel="stylesheet" href="../content.css">
@@ -92,6 +93,8 @@
     }
     const h = document.querySelector('h2.hP');
     res.subject = { size: getComputedStyle(h).fontSize, zoom: h.style.zoom, newestBody: getComputedStyle(document.getElementById('b3')).fontSize };
+    const ed = document.querySelector('[g_editable]');
+    res.draft = { wrapZoom: document.getElementById('draftWrap').style.zoom, editorStyleZoom: ed.style.zoom, editorFont: getComputedStyle(ed).fontSize };
     document.getElementById('out').textContent = 'RESULT ' + JSON.stringify(res);
   }, 2000);
 </script>

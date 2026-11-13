@@ -22,7 +22,9 @@ message, leaving the inbox list, sidebars and toolbars alone.
   levels.
 - **One text size.** Each message's text (headings, small print, list numbers included) is set to the
   size most of that message already uses, and the subject to the same size, so the conversation
-  reads at one size at any zoom.
+  reads at one size at any zoom. Reply drafts and compose windows are zoomed to match (the zoom goes
+  on the editor's wrapper, so the mail you send is unchanged); with no conversation open they use
+  the default level.
 - **Wide emails fit.** When zoomed in, fixed-width layouts reflow to the pane; if something still
   sticks out (an Outlook table, a no-wrap signature) only that part is shrunk to fit.
 - **Threads.** Each message uses its own sender's zoom. The control acts on the message under a

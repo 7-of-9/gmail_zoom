@@ -19,6 +19,13 @@ for (const z of [0.9, 1.3, 1.7, 3]) {
     const res = JSON.parse(dom.match(/RESULT (\{.*?\})<\/pre>/s)[1].replace(/&quot;/g, '"'));
     const subj = res.subject;
     delete res.subject;
+    // draft text on screen = newest body text on screen; nothing set on the editor itself
+    const dr = res.draft;
+    delete res.draft;
+    const want = Math.round(z * parseFloat(subj.newestBody) / parseFloat(dr.editorFont) * 100) / 100;
+    const draftOk = parseFloat(dr.wrapZoom) === want && dr.editorStyleZoom === '';
+    if (!draftOk) failed++;
+    console.log(`${draftOk ? 'ok  ' : 'FAIL'} z=${z} draft ${JSON.stringify({ ...dr, want })}`);
     const subjOk = parseFloat(subj.zoom) === z && subj.size === subj.newestBody;
     if (!subjOk) failed++;
     console.log(`${subjOk ? 'ok  ' : 'FAIL'} z=${z} subject ${JSON.stringify(subj)}`);

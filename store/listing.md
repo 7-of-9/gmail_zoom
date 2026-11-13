@@ -7,7 +7,9 @@ made by `./build.mjs --zip`.
 ## Item
 
 - Item ID `egpapgddflnnnhokjchhinhokpgchmnf`, listing https://chromewebstore.google.com/detail/egpapgddflnnnhokjchhinhokpgchmnf
-- 1.3.8 submitted 2026-11-12 (replaced 1.3.6 before review), publishes automatically when approved. Updates: upload a new
+- 1.3.8 submitted 2026-11-12 (replaced 1.3.6 before review), publishes automatically when approved.
+- Next store update (after 1.3.8 is approved): upload the current package and re-paste the description
+  (it now mentions drafts following the zoom, added in 1.3.9). Updates: upload a new
   `./build.mjs --zip` package on the item's Package tab, then Submit for review.
 - The Test instructions tab has no credentials (Chrome autofill put some there once; clear them).
 
@@ -54,7 +56,7 @@ Chrome's zoom blows up everything: the inbox list, the sidebars, the toolbars. P
   password, nothing to set up.
 
 • One text size. Headings, small print and Gmail's oversized subject line are evened out, so the
-  whole message reads at one size.
+  whole message reads at one size, and your reply draft follows: you write at the size you read.
 
 • Wide emails fit. Fixed-width newsletters and Outlook tables reflow to the pane instead of running
   off the side.
